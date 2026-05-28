@@ -1,0 +1,8 @@
+dist
+coverage
+node_modules
+playwright-report
+pnpm-lock.yaml
+planning/roadmap/tasks.md
+src/assets/vendor
+test-results

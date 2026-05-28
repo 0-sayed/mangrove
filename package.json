@@ -1,0 +1,56 @@
+{
+  "name": "mangrove",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": "22.14.0",
+    "pnpm": "10.26.2"
+  },
+  "scripts": {
+    "setup": "corepack enable && pnpm install",
+    "dev": "vite",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:smoke": "playwright test",
+    "knip": "knip",
+    "audit": "pnpm audit --audit-level high",
+    "build": "vite build",
+    "validate": "pnpm lint && pnpm typecheck && pnpm test && pnpm knip && pnpm audit && pnpm build",
+    "prepare": "node scripts/install-hooks.mjs"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.49",
+    "ajv": "8.20.0",
+    "phaser": "3.90.0",
+    "pure-rand": "8.4.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.60.0",
+    "@types/node": "25.9.1",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitest/coverage-v8": "4.1.7",
+    "eslint": "10.4.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.2",
+    "knip": "6.14.2",
+    "lefthook": "2.1.8",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.60.0",
+    "vite": "8.0.14",
+    "vitest": "4.1.7"
+  }
+}

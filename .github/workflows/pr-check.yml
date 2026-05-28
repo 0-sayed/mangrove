@@ -1,0 +1,63 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-check-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conventional-title:
+    name: Conventional PR Title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          node -e "const title = process.env.PR_TITLE ?? ''; if (!/^(build|chore|ci|docs|feat|fix|perf|refactor|test)(\\([\\w.-]+\\))?!?: .+/.test(title)) { console.error('PR title must follow Conventional Commits.'); process.exit(1); }"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          deny-licenses: GPL-3.0, AGPL-3.0
+          fail-on-severity: high
+
+  merge-conflict:
+    name: Merge Conflict Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            let pull;
+            for (let attempt = 1; attempt <= 10; attempt += 1) {
+              const response = await github.rest.pulls.get({ owner, repo, pull_number });
+              pull = response.data;
+              if (pull.mergeable !== null) {
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+            if (pull.mergeable === null) {
+              core.setFailed("Could not determine pull request mergeability.");
+              return;
+            }
+            if (pull.mergeable === false) {
+              core.setFailed("Pull request has merge conflicts.");
+            }
