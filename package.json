@@ -10,8 +10,8 @@
   },
   "scripts": {
     "setup": "corepack enable && pnpm install",
-    "dev": "vite --host 127.0.0.1 --port ${MANGROVE_DEV_PORT:-5177}",
-    "preview": "vite preview --host 127.0.0.1 --port ${MANGROVE_PREVIEW_PORT:-4177}",
+    "dev": "vite",
+    "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",

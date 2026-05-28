@@ -1,7 +1,7 @@
 .PHONY: setup dev check test validate build smoke stop-dev
 
 setup:
-	pnpm setup
+	pnpm run setup
 
 dev:
 	pnpm dev
