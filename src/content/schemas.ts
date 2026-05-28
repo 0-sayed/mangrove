@@ -67,7 +67,7 @@ const WaveDefSchema = Type.Object(
 const RecapSchema = Type.Object(
   {
     id: IdSchema,
-    lines: Type.Array(Type.String({ minLength: 1 }), { maxItems: 3 })
+    lines: Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 3 })
   },
   { additionalProperties: false }
 );
@@ -133,7 +133,7 @@ const BuildingDefSchema = Type.Object(
     role: BuildingRoleSchema,
     cost: NonNegativeNumberSchema,
     allowedSlots: Type.Array(IdSchema),
-    stats: Type.Record(Type.String({ minLength: 1 }), NonNegativeNumberSchema),
+    stats: Type.Record(Type.String(), NonNegativeNumberSchema),
     visibleStates: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })
   },
   { additionalProperties: false }
@@ -190,7 +190,9 @@ const SimSnapshotSchema = Type.Object(
     buildings: Type.Array(SnapshotBuildingSchema),
     messages: Type.Array(SnapshotMessageSchema),
     lanePressure: Type.Array(LanePressureSchema),
-    alerts: Type.Array(Type.String({ minLength: 1 }))
+    alerts: Type.Array(Type.String({ minLength: 1 })),
+    workerCount: Type.Optional(PositiveIntegerSchema),
+    activeWaveId: Type.Optional(IdSchema)
   },
   { additionalProperties: false }
 );

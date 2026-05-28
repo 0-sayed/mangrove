@@ -146,10 +146,41 @@ describe("first playable content schemas", () => {
           dropped: 0
         }
       ],
-      alerts: ["Queue absorbing burst"]
+      alerts: ["Queue absorbing burst"],
+      workerCount: 2,
+      activeWaveId: "wave-opening-flow"
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("rejects empty recap text", () => {
+    expect(
+      validateLevelConfig({
+        ...validLevelConfig,
+        recaps: [{ id: "recap-opening-flow", lines: [] }]
+      }).ok
+    ).toBe(false);
+  });
+
+  it("rejects invalid dynamic simulator snapshot state", () => {
+    expect(
+      validateSimSnapshot({
+        tick: 10,
+        phase: "wave",
+        meters: {
+          trust: 100,
+          budget: 50,
+          backlog: 3
+        },
+        buildings: [],
+        messages: [],
+        lanePressure: [],
+        alerts: [],
+        workerCount: 0,
+        activeWaveId: ""
+      }).ok
+    ).toBe(false);
   });
 
   it("accepts simulator events needed by animation and recap", () => {
