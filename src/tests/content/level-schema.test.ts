@@ -40,4 +40,32 @@ describe("level config schema", () => {
     }
     expect(result.errors.length).toBeGreaterThan(0);
   });
+
+  it("rejects extra fields in level objects", () => {
+    const result = validateLevelConfig({
+      id: "message-festival-bootstrap",
+      mapId: "map-bootstrap",
+      startingState: {
+        budget: 50,
+        trust: 100,
+        unused: true
+      },
+      startingBuildings: [],
+      availableBuildings: [],
+      waves: [],
+      winCondition: {
+        kind: "trust-at-least",
+        value: 70,
+        unused: true
+      },
+      lossCondition: {
+        kind: "trust-below",
+        value: 70
+      },
+      recaps: [],
+      unused: true
+    });
+
+    expect(result.ok).toBe(false);
+  });
 });
