@@ -13,4 +13,12 @@ describe("seeded rng", () => {
       second.nextInt()
     ]);
   });
+
+  it("advances the sequence on each read", () => {
+    const rng = createSeededRng(123);
+    const values = [rng.nextInt(), rng.nextInt(), rng.nextInt()];
+
+    expect(values.every(Number.isInteger)).toBe(true);
+    expect(new Set(values).size).toBeGreaterThan(1);
+  });
 });
