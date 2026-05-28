@@ -12,7 +12,7 @@ export function GameCanvas() {
     }
 
     const game = new Phaser.Game({
-      type: Phaser.CANVAS,
+      type: Phaser.AUTO,
       parent: containerRef.current,
       width: 800,
       height: 450,
