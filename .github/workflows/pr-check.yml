@@ -45,7 +45,19 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const pull_number = context.payload.pull_request.number;
-            const { data: pull } = await github.rest.pulls.get({ owner, repo, pull_number });
+            let pull;
+            for (let attempt = 1; attempt <= 10; attempt += 1) {
+              const response = await github.rest.pulls.get({ owner, repo, pull_number });
+              pull = response.data;
+              if (pull.mergeable !== null) {
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+            if (pull.mergeable === null) {
+              core.setFailed("Could not determine pull request mergeability.");
+              return;
+            }
             if (pull.mergeable === false) {
               core.setFailed("Pull request has merge conflicts.");
             }
