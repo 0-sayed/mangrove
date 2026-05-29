@@ -240,6 +240,14 @@ const SimEventSchema = Type.Union([
     { additionalProperties: false }
   ),
   Type.Object(
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("building.placed"), buildingId: IdSchema, slotId: IdSchema },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("worker-count.changed"), count: PositiveIntegerSchema },
+    { additionalProperties: false }
+  ),
+  Type.Object(
     { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("meter.changed"), meter: MeterSchema, delta: Type.Number(), value: NonNegativeNumberSchema },
     { additionalProperties: false }
   ),

@@ -221,6 +221,8 @@ describe("first playable content schemas", () => {
     expect(validateSimEvent({ tick: 2, type: "meter.changed", meter: "backlog", delta: 1, value: 1 }).ok).toBe(true);
     expect(validateSimEvent({ tick: 3, type: "wave.started", waveId: "wave-opening-flow" }).ok).toBe(true);
     expect(validateSimEvent({ tick: 4, type: "wave.ended", waveId: "wave-opening-flow" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 5, type: "building.placed", buildingId: "queue-hub", slotId: "slot_queue_1" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 6, type: "worker-count.changed", count: 2 }).ok).toBe(true);
   });
 
   it("accepts post-wave recap results", () => {
