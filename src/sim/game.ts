@@ -58,6 +58,7 @@ export interface GameState {
   readonly messages: readonly LifecycleMessage[];
   readonly lanePressure: readonly LanePressure[];
   readonly alerts: readonly string[];
+  readonly completedWaveIds: readonly string[];
   readonly commandHistory: readonly AppliedCommand[];
   readonly eventLog: EventLog;
 }
@@ -112,7 +113,9 @@ function cloneMapMetadata(map: MapMetadata): MapMetadata {
   };
 }
 
-function cloneBuildingDefs(buildingDefs: readonly BuildingDef[] | undefined): readonly BuildingDef[] {
+function cloneBuildingDefs(
+  buildingDefs: readonly BuildingDef[] | undefined
+): readonly BuildingDef[] {
   return (buildingDefs ?? []).map((def) => ({
     ...def,
     allowedSlots: [...def.allowedSlots],
@@ -121,7 +124,11 @@ function cloneBuildingDefs(buildingDefs: readonly BuildingDef[] | undefined): re
   }));
 }
 
-export function createGame(config: LevelConfig, seed: number, options: GameOptions = {}): GameState {
+export function createGame(
+  config: LevelConfig,
+  seed: number,
+  options: GameOptions = {}
+): GameState {
   if (!Number.isInteger(seed)) {
     throw new Error("Game seed must be an integer.");
   }
@@ -153,6 +160,7 @@ export function createGame(config: LevelConfig, seed: number, options: GameOptio
     messages: [],
     lanePressure: [],
     alerts: [],
+    completedWaveIds: [],
     commandHistory: [],
     eventLog: createEventLog(20)
   };
@@ -194,9 +202,108 @@ function mainPathId(state: GameState): string {
   return path.id;
 }
 
-function applyCommand(state: GameState, command: Command): GameState {
-  if (command.type !== "StartWave") {
+function canSpend(state: GameState, amount: number): boolean {
+  return state.meters.budget >= amount;
+}
+
+function findBuildSlot(state: GameState, slotId: string) {
+  return state.map?.buildSlots.find((slot) => slot.id === slotId);
+}
+
+function placeBuilding(state: GameState, command: Extract<Command, { type: "PlaceBuilding" }>) {
+  if (
+    state.phase !== "recap" ||
+    !isCommandUnlocked(state, command.type) ||
+    !isBuildingUnlocked(state, command.buildingId) ||
+    !state.config.availableBuildings.includes(command.buildingId)
+  ) {
     return state;
+  }
+
+  const def = state.buildingDefsById[command.buildingId];
+  const slot = findBuildSlot(state, command.slotId);
+
+  if (
+    !def ||
+    slot?.role !== def.role ||
+    !def.allowedSlots.includes(command.slotId) ||
+    state.buildings.some((building) => building.slotId === command.slotId) ||
+    state.buildings.some((building) => building.defId === def.id) ||
+    !canSpend(state, def.cost)
+  ) {
+    return state;
+  }
+
+  const nextState = changeMeter(state, "budget", -def.cost);
+  const building = {
+    id: `${command.buildingId}@${command.slotId}#${String(nextState.buildings.length)}`,
+    defId: command.buildingId,
+    slotId: command.slotId,
+    state: "idle"
+  } satisfies SnapshotBuilding;
+
+  return {
+    ...nextState,
+    buildings: [...nextState.buildings, building],
+    eventLog: pushEvent(nextState.eventLog, {
+      tick: state.tick,
+      type: "building.placed",
+      buildingId: command.buildingId,
+      slotId: command.slotId
+    })
+  };
+}
+
+function setWorkerCount(
+  state: GameState,
+  command: Extract<Command, { type: "SetWorkerCount" }>
+): GameState {
+  if (
+    state.phase !== "recap" ||
+    !Number.isInteger(command.count) ||
+    !isCommandUnlocked(state, "SetWorkerCount")
+  ) {
+    return state;
+  }
+
+  const workerYard = findBuildingByRole(state, "worker-yard");
+  if (!workerYard || command.count <= state.workerCount) {
+    return state;
+  }
+
+  const maxWorkers = getBuildingStat(state, workerYard, "maxWorkers");
+  const upgradeCost = getBuildingStat(state, workerYard, "workerCountUpgradeCost");
+
+  if (command.count > maxWorkers || !canSpend(state, upgradeCost)) {
+    return state;
+  }
+
+  const nextState = changeMeter(state, "budget", -upgradeCost);
+
+  return {
+    ...nextState,
+    workerCount: command.count,
+    eventLog: pushEvent(nextState.eventLog, {
+      tick: state.tick,
+      type: "worker-count.changed",
+      count: command.count
+    })
+  };
+}
+
+function isRecordableCommand(command: Command): boolean {
+  return (
+    command.type !== "SetWorkerCount" || (Number.isInteger(command.count) && command.count >= 1)
+  );
+}
+
+function applyCommand(state: GameState, command: Command): GameState {
+  if (command.type === "PlaceBuilding") {
+    return placeBuilding(state, command);
+  }
+
+  if (command.type === "SetWorkerCount") {
+    return setWorkerCount(state, command);
   }
 
   const wave = state.config.waves.find((candidate) => candidate.id === command.waveId);
@@ -222,6 +329,29 @@ function applyCommand(state: GameState, command: Command): GameState {
   };
 }
 
+function isCommandUnlocked(
+  state: GameState,
+  commandType: "PlaceBuilding" | "SetWorkerCount"
+): boolean {
+  return (
+    state.config.unlocks?.some(
+      (unlock) =>
+        state.completedWaveIds.includes(unlock.afterWaveId) &&
+        unlock.commandTypes?.includes(commandType)
+    ) ?? false
+  );
+}
+
+function isBuildingUnlocked(state: GameState, buildingId: string): boolean {
+  return (
+    state.config.unlocks?.some(
+      (unlock) =>
+        state.completedWaveIds.includes(unlock.afterWaveId) &&
+        unlock.buildingIds?.includes(buildingId)
+    ) ?? false
+  );
+}
+
 function activeWave(state: GameState): WaveDef | undefined {
   return state.config.waves.find((wave) => wave.id === state.activeWaveId);
 }
@@ -238,11 +368,7 @@ function isActiveMessage(message: LifecycleMessage): boolean {
   );
 }
 
-function changeMeter(
-  state: GameState,
-  meter: keyof GameState["meters"],
-  delta: number
-): GameState {
+function changeMeter(state: GameState, meter: keyof GameState["meters"], delta: number): GameState {
   const previousValue = state.meters[meter];
   const nextValue = Math.max(0, previousValue + delta);
   const actualDelta = nextValue - previousValue;
@@ -387,8 +513,9 @@ function dropMessagesOverCapacity(
 
   return {
     ...nextState,
-    messages: state.messages.map((message, index): LifecycleMessage =>
-      dropIndexSet.has(index) ? { ...message, status: "dropped" } : message
+    messages: state.messages.map(
+      (message, index): LifecycleMessage =>
+        dropIndexSet.has(index) ? { ...message, status: "dropped" } : message
     )
   };
 }
@@ -581,9 +708,14 @@ function maybeEndWave(state: GameState): GameState {
     return state;
   }
 
+  const completedWaveIds = state.completedWaveIds.includes(wave.id)
+    ? state.completedWaveIds
+    : [...state.completedWaveIds, wave.id];
+
   return {
     ...state,
     phase: "recap",
+    completedWaveIds,
     eventLog: pushEvent(state.eventLog, {
       tick: state.tick,
       type: "wave.ended",
@@ -593,9 +725,10 @@ function maybeEndWave(state: GameState): GameState {
 }
 
 export function step(state: GameState, commandsForTick: readonly Command[]): GameState {
+  const recordableCommands = commandsForTick.filter(isRecordableCommand);
   const commandHistory = [
     ...state.commandHistory,
-    ...commandsForTick.map((command) => ({
+    ...recordableCommands.map((command) => ({
       tick: state.tick,
       command: { ...command }
     }))
