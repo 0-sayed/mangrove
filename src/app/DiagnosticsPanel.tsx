@@ -1,7 +1,7 @@
-import type { BootstrapSnapshot } from "@sim/bootstrap-state";
+import type { SimSnapshot } from "@content/schemas";
 
 interface DiagnosticsPanelProps {
-  readonly snapshot: BootstrapSnapshot;
+  readonly snapshot: SimSnapshot;
 }
 
 export function DiagnosticsPanel({ snapshot }: DiagnosticsPanelProps) {
@@ -13,7 +13,7 @@ export function DiagnosticsPanel({ snapshot }: DiagnosticsPanelProps) {
     <aside className="diagnostics" aria-label="Development diagnostics">
       <span>tick {snapshot.tick}</span>
       <span>phase {snapshot.phase}</span>
-      <span>events {snapshot.recentEvents.length}</span>
+      <span>messages {snapshot.messages.length}</span>
     </aside>
   );
 }
