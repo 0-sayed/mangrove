@@ -1,7 +1,8 @@
 export interface SimEvent {
   readonly tick: number;
   readonly type: string;
-  readonly message: string;
+  readonly message?: string;
+  readonly [key: string]: unknown;
 }
 
 export interface EventLog {

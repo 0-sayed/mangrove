@@ -219,7 +219,8 @@ describe("first playable content schemas", () => {
   it("accepts simulator events needed by animation and recap", () => {
     expect(validateSimEvent({ tick: 1, type: "message.spawned", messageId: "message-1", messageType: "useful" }).ok).toBe(true);
     expect(validateSimEvent({ tick: 2, type: "meter.changed", meter: "backlog", delta: 1, value: 1 }).ok).toBe(true);
-    expect(validateSimEvent({ tick: 3, type: "wave.ended", waveId: "wave-opening-flow" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 3, type: "wave.started", waveId: "wave-opening-flow" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 4, type: "wave.ended", waveId: "wave-opening-flow" }).ok).toBe(true);
   });
 
   it("accepts post-wave recap results", () => {

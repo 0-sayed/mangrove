@@ -35,3 +35,5 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 .archon/
+codex.review.md
+docs/superpowers/

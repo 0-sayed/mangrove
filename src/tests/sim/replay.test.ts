@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { bootstrapLevel } from "@content/bootstrap-level";
+import {
+  messageFestivalV0BuildingDefs,
+  messageFestivalV0Level,
+  messageFestivalV0Map
+} from "@content/message-festival-v0";
 import type { Command } from "@content/schemas";
 import { runReplay, type ReplayCommand } from "@sim/replay";
 
@@ -59,6 +64,32 @@ describe("sim replay", () => {
     );
 
     expect(() => runReplay({ config: bootstrapLevel, seed: 123, ticks: 3, commandLog })).not.toThrow();
+  });
+
+  it("replays lifecycle ticks with building definitions deterministically", () => {
+    const commandLog: readonly ReplayCommand[] = [
+      { tick: 0, command: { type: "StartWave", waveId: "wave-opening-flow" } }
+    ];
+
+    const first = runReplay({
+      config: messageFestivalV0Level,
+      seed: 123,
+      ticks: 30,
+      commandLog,
+      buildingDefs: messageFestivalV0BuildingDefs,
+      map: messageFestivalV0Map
+    });
+    const second = runReplay({
+      config: messageFestivalV0Level,
+      seed: 123,
+      ticks: 30,
+      commandLog,
+      buildingDefs: messageFestivalV0BuildingDefs,
+      map: messageFestivalV0Map
+    });
+
+    expect(first.hash).toBe(second.hash);
+    expect(first.state).toEqual(second.state);
   });
 
   it("rejects negative replay duration", () => {

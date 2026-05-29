@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bootstrapLevel } from "@content/bootstrap-level";
+import { messageFestivalV0BuildingDefs, messageFestivalV0Map } from "@content/message-festival-v0";
 import type { Command } from "@content/schemas";
 import { validateSimSnapshot } from "@content/schemas";
 import { createGame, step, toSnapshot } from "@sim/game";
@@ -76,7 +77,7 @@ describe("deterministic simulator core", () => {
   });
 
   it("advances exactly one fixed tick and records commands for the input tick", () => {
-    const command: Command = { type: "StartWave", waveId: "opening-flow" };
+    const command: Command = { type: "SetWorkerCount", count: 2 };
     const initial = createGame(bootstrapLevel, 123);
     const next = step(initial, [command]);
 
@@ -85,19 +86,55 @@ describe("deterministic simulator core", () => {
     expect(next.eventLog.events.at(-1)).toEqual({
       tick: 0,
       type: "command.received",
-      message: "StartWave"
+      message: "SetWorkerCount"
     });
   });
 
   it("records command history as stable snapshots", () => {
-    const command: Command = { type: "StartWave", waveId: "opening-flow" };
+    const command: Command = { type: "SetWorkerCount", count: 2 };
     const initial = createGame(bootstrapLevel, 123);
     const next = step(initial, [command]);
 
-    command.waveId = "mutated-after-step";
+    command.count = 3;
 
-    expect(next.commandHistory).toEqual([{ tick: 0, command: { type: "StartWave", waveId: "opening-flow" } }]);
+    expect(next.commandHistory).toEqual([{ tick: 0, command: { type: "SetWorkerCount", count: 2 } }]);
     expect(next.commandHistory[0]?.command).not.toBe(command);
+  });
+
+  it("starts a valid wave and exposes it in the snapshot", () => {
+    const initial = createGame(bootstrapLevel, 123, {
+      buildingDefs: messageFestivalV0BuildingDefs,
+      map: messageFestivalV0Map
+    });
+    const next = step(initial, [{ type: "StartWave", waveId: "wave-opening-flow" }]);
+
+    expect(next.phase).toBe("wave");
+    expect(toSnapshot(next)).toMatchObject({
+      tick: 1,
+      phase: "wave",
+      activeWaveId: "wave-opening-flow"
+    });
+    expect(next.eventLog.events).toContainEqual({
+      tick: 0,
+      type: "wave.started",
+      waveId: "wave-opening-flow"
+    });
+  });
+
+  it("does not start a wave from complete phase", () => {
+    const initial = createGame(bootstrapLevel, 123, {
+      buildingDefs: messageFestivalV0BuildingDefs,
+      map: messageFestivalV0Map
+    });
+    const complete = { ...initial, phase: "complete" as const };
+    const next = step(complete, [{ type: "StartWave", waveId: "wave-opening-flow" }]);
+
+    expect(next.phase).toBe("complete");
+    expect(next.eventLog.events).not.toContainEqual({
+      tick: 0,
+      type: "wave.started",
+      waveId: "wave-opening-flow"
+    });
   });
 
   it("does not mutate previous state when stepping", () => {

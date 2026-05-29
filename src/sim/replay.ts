@@ -1,5 +1,5 @@
-import type { Command, LevelConfig } from "@content/schemas";
-import { createGame, step, type GameState } from "@sim/game";
+import type { BuildingDef, Command, LevelConfig, MapMetadata } from "@content/schemas";
+import { createGame, step, type GameOptions, type GameState } from "@sim/game";
 import { hashState } from "@sim/hash";
 
 export interface ReplayCommand {
@@ -12,6 +12,8 @@ export interface ReplayInput {
   readonly seed: number;
   readonly ticks: number;
   readonly commandLog: readonly ReplayCommand[];
+  readonly buildingDefs?: readonly BuildingDef[];
+  readonly map?: MapMetadata;
 }
 
 export interface ReplayResult {
@@ -43,7 +45,11 @@ export function runReplay(input: ReplayInput): ReplayResult {
   }
 
   const commandsByTick = indexCommandsByTick(input.commandLog);
-  let state = createGame(input.config, input.seed);
+  const gameOptions: GameOptions = {
+    ...(input.buildingDefs ? { buildingDefs: input.buildingDefs } : {}),
+    ...(input.map ? { map: input.map } : {})
+  };
+  let state = createGame(input.config, input.seed, gameOptions);
 
   for (let tick = 0; tick < input.ticks; tick += 1) {
     state = step(state, commandsByTick.get(state.tick) ?? NO_COMMANDS);

@@ -244,6 +244,10 @@ const SimEventSchema = Type.Union([
     { additionalProperties: false }
   ),
   Type.Object(
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.started"), waveId: IdSchema },
+    { additionalProperties: false }
+  ),
+  Type.Object(
     { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.ended"), waveId: IdSchema },
     { additionalProperties: false }
   )
