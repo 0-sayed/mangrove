@@ -44,6 +44,23 @@ describe("sim replay", () => {
     expect(first.hash).not.toBe(second.hash);
   });
 
+  it("does not scan the full command log for every tick", () => {
+    const commandLog = new Proxy<ReplayCommand[]>(
+      [{ tick: 0, command: { type: "StartWave", waveId: "opening-flow" } }],
+      {
+        get(target, property, receiver) {
+          if (property === "filter") {
+            throw new Error("Replay command log must be indexed before ticking.");
+          }
+
+          return Reflect.get(target, property, receiver);
+        }
+      }
+    );
+
+    expect(() => runReplay({ config: bootstrapLevel, seed: 123, ticks: 3, commandLog })).not.toThrow();
+  });
+
   it("rejects negative replay duration", () => {
     expect(() => runReplay({ config: bootstrapLevel, seed: 123, ticks: -1, commandLog: [] })).toThrow(
       "non-negative integer"
