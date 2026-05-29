@@ -106,7 +106,7 @@ export const messageFestivalV0Level: LevelConfig = {
       slotId: "slot_worker_1"
     }
   ],
-  availableBuildings: messageFestivalV0BuildingDefs.map((building) => building.id),
+  availableBuildings: [queueHubDef.id],
   unlocks: [
     {
       afterWaveId: openingFlowWave.id,

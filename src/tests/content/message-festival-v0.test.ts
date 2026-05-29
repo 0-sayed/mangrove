@@ -37,6 +37,10 @@ describe("Message Festival v0 content", () => {
     ]);
   });
 
+  it("offers only Queue Hub as a placeable building choice", () => {
+    expect(messageFestivalV0Level.availableBuildings).toEqual(["queue-hub"]);
+  });
+
   it("authors the first playable building tuning", () => {
     expect(apiGateDef.stats).toMatchObject({
       acceptPerSecond: 3,
