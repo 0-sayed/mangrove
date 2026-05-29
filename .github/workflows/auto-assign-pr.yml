@@ -6,7 +6,7 @@ on:
 
 permissions:
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   assign-author:
@@ -21,9 +21,17 @@ jobs:
             if (!pullRequest || pullRequest.draft) {
               return;
             }
-            await github.rest.issues.addAssignees({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pullRequest.number,
-              assignees: [pullRequest.user.login]
-            });
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequest.number,
+                assignees: [pullRequest.user.login]
+              });
+            } catch (error) {
+              if (error.status === 403 && error.message === "Resource not accessible by integration") {
+                core.warning(`Could not assign PR author with GITHUB_TOKEN: ${error.message}`);
+                return;
+              }
+              throw error;
+            }
