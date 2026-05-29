@@ -18,7 +18,10 @@ describe("deterministic simulator core", () => {
         budget: 50,
         backlog: 0
       },
-      buildings: [],
+      buildings: [
+        { id: "api-gate@slot_ingress_1#0", defId: "api-gate", slotId: "slot_ingress_1", state: "idle" },
+        { id: "worker-yard@slot_worker_1#1", defId: "worker-yard", slotId: "slot_worker_1", state: "idle" }
+      ],
       messages: [],
       lanePressure: [],
       alerts: [],
