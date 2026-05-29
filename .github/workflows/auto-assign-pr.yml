@@ -2,11 +2,11 @@ name: Auto Assign PR
 
 on:
   pull_request_target:
-    types: [opened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
 
 permissions:
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   assign-author:
@@ -19,6 +19,9 @@ jobs:
           script: |
             const pullRequest = context.payload.pull_request;
             if (!pullRequest || pullRequest.draft) {
+              return;
+            }
+            if (pullRequest.assignees.some((assignee) => assignee.login === pullRequest.user.login)) {
               return;
             }
             await github.rest.issues.addAssignees({
