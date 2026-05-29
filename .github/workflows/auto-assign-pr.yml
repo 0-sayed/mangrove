@@ -6,7 +6,8 @@ on:
 
 permissions:
   issues: write
-  pull-requests: read
+  # GitHub requires PR write permission when assigning a pull request via the Issues API.
+  pull-requests: write
 
 jobs:
   assign-author:
