@@ -63,7 +63,9 @@ describe("sim replay", () => {
       }
     );
 
-    expect(() => runReplay({ config: bootstrapLevel, seed: 123, ticks: 3, commandLog })).not.toThrow();
+    expect(() =>
+      runReplay({ config: bootstrapLevel, seed: 123, ticks: 3, commandLog })
+    ).not.toThrow();
   });
 
   it("replays lifecycle ticks with building definitions deterministically", () => {
@@ -92,9 +94,43 @@ describe("sim replay", () => {
     expect(first.state).toEqual(second.state);
   });
 
+  it("replays first playable commands deterministically", () => {
+    const commandLog: readonly ReplayCommand[] = [
+      { tick: 0, command: { type: "StartWave", waveId: "wave-opening-flow" } },
+      {
+        tick: 221,
+        command: { type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" }
+      },
+      { tick: 222, command: { type: "SetWorkerCount", count: 2 } },
+      { tick: 223, command: { type: "StartWave", waveId: "wave-flood" } }
+    ];
+
+    const first = runReplay({
+      config: messageFestivalV0Level,
+      seed: 123,
+      ticks: 260,
+      commandLog,
+      buildingDefs: messageFestivalV0BuildingDefs,
+      map: messageFestivalV0Map
+    });
+    const second = runReplay({
+      config: messageFestivalV0Level,
+      seed: 123,
+      ticks: 260,
+      commandLog,
+      buildingDefs: messageFestivalV0BuildingDefs,
+      map: messageFestivalV0Map
+    });
+
+    expect(first.hash).toBe(second.hash);
+    expect(first.state).toEqual(second.state);
+    expect(first.state.buildings.some((building) => building.defId === "queue-hub")).toBe(true);
+    expect(first.state.workerCount).toBe(2);
+  });
+
   it("rejects negative replay duration", () => {
-    expect(() => runReplay({ config: bootstrapLevel, seed: 123, ticks: -1, commandLog: [] })).toThrow(
-      "non-negative integer"
-    );
+    expect(() =>
+      runReplay({ config: bootstrapLevel, seed: 123, ticks: -1, commandLog: [] })
+    ).toThrow("non-negative integer");
   });
 });
