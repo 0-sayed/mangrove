@@ -120,6 +120,51 @@ describe("first playable commands", () => {
     expect(toSnapshot(repeated).meters.budget).toBe(toSnapshot(tuned).meters.budget);
   });
 
+  it("keeps worker tuning blocked while timed-out recap messages are active", () => {
+    const openingWave = messageFestivalV0Level.waves[0];
+    if (!openingWave) {
+      throw new Error("message festival level must author an opening wave");
+    }
+
+    const timeoutLevel: LevelConfig = {
+      ...messageFestivalV0Level,
+      waves: [
+        {
+          ...openingWave,
+          durationTicks: 1,
+          timeoutTicks: 1,
+          spawnSchedule: [{ tick: 0, messageType: "useful", count: 1 }]
+        }
+      ]
+    };
+    const slowWorkerDefs = messageFestivalV0BuildingDefs.map((building) =>
+      building.id === "worker-yard"
+        ? { ...building, stats: { ...building.stats, processingTicks: 10 } }
+        : building
+    );
+    const timedOut = runTicks(
+      step(createPlayableGame(timeoutLevel, slowWorkerDefs), [
+        { type: "StartWave", waveId: "wave-opening-flow" }
+      ]),
+      1
+    );
+
+    const tuned = step(timedOut, [{ type: "SetWorkerCount", count: 2 }]);
+
+    expect(toSnapshot(timedOut)).toMatchObject({
+      phase: "recap",
+      workerCount: 1
+    });
+    expect(toSnapshot(timedOut).messages.some((message) => message.status === "processing")).toBe(
+      true
+    );
+    expect(toSnapshot(tuned).workerCount).toBe(1);
+    expect(toSnapshot(tuned).meters.budget).toBe(toSnapshot(timedOut).meters.budget);
+    expect(tuned.eventLog.events).not.toContainEqual(
+      expect.objectContaining({ tick: timedOut.tick, type: "worker-count.changed" })
+    );
+  });
+
   it("charges worker tuning once for each added worker", () => {
     const buildingDefs = messageFestivalV0BuildingDefs.map((building) =>
       building.id === "worker-yard"

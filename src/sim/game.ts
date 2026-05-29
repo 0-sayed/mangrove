@@ -260,6 +260,7 @@ function setWorkerCount(
 ): GameState {
   if (
     state.phase !== "recap" ||
+    state.messages.some(isActiveMessage) ||
     !Number.isInteger(command.count) ||
     !isCommandUnlocked(state, "SetWorkerCount")
   ) {
