@@ -7,6 +7,7 @@ Start these tasks only after `bootstrap.md` has created the runnable React + Vit
 ## Roadmap Rules
 
 - Pick the lowest unblocked task.
+- Tasks in the same execution wave have no dependencies on each other and may be planned or implemented in parallel.
 - Do not implement deferred features early.
 - Keep simulator truth separate from React and Phaser.
 - Every gameplay mechanic must produce visible feedback and have a real backend concept shadow.
@@ -31,7 +32,7 @@ Build a 2-3 minute local browser game slice:
 
 | Task                                                    | Depends On             | Context                                                        |
 | ------------------------------------------------------- | ---------------------- | -------------------------------------------------------------- |
-| [ ] `T001` - Define first playable content schemas      | bootstrap complete     | `planning/context/game-design.md`, `planning/context/stack.md` |
+| [x] `T001` - Define first playable content schemas      | bootstrap complete     | `planning/context/game-design.md`, `planning/context/stack.md` |
 | [ ] `T002` - Author Message Festival v0 content         | `T001`                 | `planning/context/game-design.md`                              |
 | [ ] `T003` - Create deterministic simulator core        | `T001`                 | `planning/context/stack.md`                                    |
 | [ ] `T004` - Implement message lifecycle                | `T002`, `T003`         | `planning/context/game-design.md`                              |
@@ -55,6 +56,29 @@ Build a 2-3 minute local browser game slice:
 | [ ] `T022` - Add Compute meter                          | `T021`                 | `planning/context/game-design.md`                              |
 | [ ] `T023` - Add post-run learning memory               | `T021`                 | `planning/context/game-design.md`                              |
 | [ ] `T024` - Add second-surface transfer scenario       | `T023`                 | `planning/context/game-design.md`                              |
+
+## Execution Waves
+
+Each wave is the earliest parallel stage for those tasks. Tasks in the same wave have no dependencies on each other.
+
+| Wave | Parallel Tasks        |
+| ---- | --------------------- |
+| 1    | `T001`                |
+| 2    | `T002`, `T003`        |
+| 3    | `T004`                |
+| 4    | `T005`, `T009`        |
+| 5    | `T006`, `T010`, `T011` |
+| 6    | `T007`, `T013`        |
+| 7    | `T008`, `T012`        |
+| 8    | `T014`                |
+| 9    | `T015`                |
+| 10   | `T016`                |
+| 11   | `T017`, `T018`        |
+| 12   | `T019`                |
+| 13   | `T020`                |
+| 14   | `T021`                |
+| 15   | `T022`, `T023`        |
+| 16   | `T024`                |
 
 ## Explicitly Deferred
 

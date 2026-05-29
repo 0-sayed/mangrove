@@ -5,7 +5,9 @@ export const bootstrapLevel: LevelConfig = {
   mapId: "map-bootstrap",
   startingState: {
     budget: 50,
-    trust: 100
+    trust: 100,
+    backlog: 0,
+    workerCount: 1
   },
   startingBuildings: [],
   availableBuildings: [],
