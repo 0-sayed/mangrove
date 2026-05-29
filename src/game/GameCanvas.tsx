@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { useEffect, useRef } from "react";
 
-import type { BuildingDef, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
+import type { BuildingDef, Command, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
 import { BATTLEFIELD_VIEW } from "@game/battlefield-view";
 import { BattlefieldScene } from "@game/BattlefieldScene";
 
@@ -10,12 +10,14 @@ export interface GameCanvasProps {
   readonly map: MapMetadata;
   readonly buildingDefs: readonly BuildingDef[];
   readonly snapshot: SimSnapshot;
+  readonly onCommand?: (command: Command) => void;
 }
 
-export function GameCanvas({ level, map, buildingDefs, snapshot }: GameCanvasProps) {
+export function GameCanvas({ level, map, buildingDefs, snapshot, onCommand }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<BattlefieldScene | null>(null);
   const latestSnapshotRef = useRef(snapshot);
+  const latestOnCommandRef = useRef(onCommand);
 
   useEffect(() => {
     latestSnapshotRef.current = snapshot;
@@ -23,11 +25,21 @@ export function GameCanvas({ level, map, buildingDefs, snapshot }: GameCanvasPro
   }, [snapshot]);
 
   useEffect(() => {
+    latestOnCommandRef.current = onCommand;
+  }, [onCommand]);
+
+  useEffect(() => {
     if (!containerRef.current) {
       return;
     }
 
-    const scene = new BattlefieldScene({ level, map, buildingDefs, snapshot: latestSnapshotRef.current });
+    const scene = new BattlefieldScene({
+      level,
+      map,
+      buildingDefs,
+      snapshot: latestSnapshotRef.current,
+      onCommand: (command) => latestOnCommandRef.current?.(command)
+    });
     sceneRef.current = scene;
 
     const game = new Phaser.Game({

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { BuildingDef, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
+import type { BuildingDef, Command, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
 import {
   activePacketMessages,
   BATTLEFIELD_VIEW,
@@ -11,12 +11,18 @@ import {
   pathWorldPoints,
   queueFillCount
 } from "@game/battlefield-view";
+import {
+  buildSlotCommandForWorldPoint,
+  increaseWorkerCountCommand,
+  startNextWaveCommand
+} from "@game/battlefield-input";
 
 export interface BattlefieldSceneOptions {
   readonly level: LevelConfig;
   readonly map: MapMetadata;
   readonly buildingDefs: readonly BuildingDef[];
   readonly snapshot: SimSnapshot;
+  readonly onCommand?: (command: Command) => void;
 }
 
 interface BuildingRender {
@@ -25,8 +31,11 @@ interface BuildingRender {
 }
 
 export class BattlefieldScene extends Phaser.Scene {
+  readonly #level: LevelConfig;
   readonly #map: MapMetadata;
+  readonly #buildingDefs: readonly BuildingDef[];
   readonly #buildingDefsById: ReadonlyMap<string, BuildingDef>;
+  readonly #onCommand: ((command: Command) => void) | undefined;
   #snapshot: SimSnapshot;
   #queueText?: Phaser.GameObjects.Text;
   readonly #buildingRenders = new Map<string, BuildingRender>();
@@ -35,8 +44,11 @@ export class BattlefieldScene extends Phaser.Scene {
   public constructor(options: BattlefieldSceneOptions) {
     super("battlefield-scene");
 
+    this.#level = options.level;
     this.#map = options.map;
+    this.#buildingDefs = options.buildingDefs;
     this.#snapshot = options.snapshot;
+    this.#onCommand = options.onCommand;
     this.#buildingDefsById = new Map(
       options.buildingDefs.map((buildingDef) => [buildingDef.id, buildingDef])
     );
@@ -53,6 +65,7 @@ export class BattlefieldScene extends Phaser.Scene {
       fontFamily: "monospace",
       fontSize: "16px"
     });
+    this.registerInputHandlers();
     this.renderSnapshot();
   }
 
@@ -99,6 +112,46 @@ export class BattlefieldScene extends Phaser.Scene {
     for (const slot of this.#map.buildSlots) {
       const position = buildSlotWorldPosition(this.#map, slot.id);
       graphics.strokeRoundedRect(position.x - 34, position.y - 34, 68, 68, 8);
+    }
+  }
+
+  private registerInputHandlers(): void {
+    const emitBuildCommand = (pointer: Phaser.Input.Pointer) => {
+      this.emitCommand(
+        buildSlotCommandForWorldPoint(this.#level, this.#map, this.#buildingDefs, this.#snapshot, {
+          x: pointer.worldX,
+          y: pointer.worldY
+        })
+      );
+    };
+    const emitStartWaveCommand = () => {
+      this.emitCommand(startNextWaveCommand(this.#level, this.#snapshot));
+    };
+    const emitIncreaseWorkerCountCommand = () => {
+      this.emitCommand(increaseWorkerCountCommand(this.#buildingDefs, this.#snapshot));
+    };
+    const keyboard = this.input.keyboard;
+
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, emitBuildCommand);
+    keyboard?.on("keydown-SPACE", emitStartWaveCommand);
+    keyboard?.on("keydown-ENTER", emitStartWaveCommand);
+    keyboard?.on("keydown-W", emitIncreaseWorkerCountCommand);
+    keyboard?.on("keydown-PLUS", emitIncreaseWorkerCountCommand);
+    keyboard?.on("keydown-NUMPAD_ADD", emitIncreaseWorkerCountCommand);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off(Phaser.Input.Events.POINTER_DOWN, emitBuildCommand);
+      keyboard?.off("keydown-SPACE", emitStartWaveCommand);
+      keyboard?.off("keydown-ENTER", emitStartWaveCommand);
+      keyboard?.off("keydown-W", emitIncreaseWorkerCountCommand);
+      keyboard?.off("keydown-PLUS", emitIncreaseWorkerCountCommand);
+      keyboard?.off("keydown-NUMPAD_ADD", emitIncreaseWorkerCountCommand);
+    });
+  }
+
+  private emitCommand(command: Command | undefined): void {
+    if (command) {
+      this.#onCommand?.(command);
     }
   }
 

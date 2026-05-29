@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { DiagnosticsPanel } from "@app/DiagnosticsPanel";
 import { ErrorBoundary } from "@app/ErrorBoundary";
 import {
@@ -5,20 +7,39 @@ import {
   messageFestivalV0Level,
   messageFestivalV0Map
 } from "@content/message-festival-v0";
+import type { Command } from "@content/schemas";
 import { GameCanvas } from "@game/GameCanvas";
-import { createGame, step, toSnapshot } from "@sim/game";
+import { createGame, step, toSnapshot, type GameState } from "@sim/game";
 
-function createBattlefieldPreview() {
-  const initial = createGame(messageFestivalV0Level, 12345, {
+const TICK_INTERVAL_MS = 50;
+
+function createInitialGameState(): GameState {
+  return createGame(messageFestivalV0Level, 12345, {
     buildingDefs: messageFestivalV0BuildingDefs,
     map: messageFestivalV0Map
   });
-
-  return toSnapshot(step(initial, [{ type: "StartWave", waveId: "wave-opening-flow" }]));
 }
 
 export function App() {
-  const snapshot = createBattlefieldPreview();
+  const [gameState, setGameState] = useState(createInitialGameState);
+  const pendingCommandsRef = useRef<Command[]>([]);
+  const handleCommand = useCallback((command: Command) => {
+    pendingCommandsRef.current = [...pendingCommandsRef.current, command];
+  }, []);
+  const snapshot = toSnapshot(gameState);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const commands = pendingCommandsRef.current;
+      pendingCommandsRef.current = [];
+
+      setGameState((current) => step(current, commands));
+    }, TICK_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -40,6 +61,7 @@ export function App() {
           map={messageFestivalV0Map}
           buildingDefs={messageFestivalV0BuildingDefs}
           snapshot={snapshot}
+          onCommand={handleCommand}
         />
         <DiagnosticsPanel snapshot={snapshot} />
       </main>
