@@ -35,8 +35,8 @@ Build a 2-3 minute local browser game slice:
 | [x] `T001` - Define first playable content schemas      | bootstrap complete     | `planning/context/game-design.md`, `planning/context/stack.md`   |
 | [x] `T002` - Author Message Festival v0 content         | `T001`                 | `planning/context/game-design.md`                                |
 | [x] `T003` - Create deterministic simulator core        | `T001`                 | `planning/context/stack.md`                                      |
-| [ ] `T004` - Implement message lifecycle                | `T002`, `T003`         | `planning/context/game-design.md`                                |
-| [ ] `T005` - Implement first playable commands          | `T004`                 | `planning/context/game-design.md`, `planning/context/stack.md`   |
+| [x] `T004` - Implement message lifecycle                | `T002`, `T003`         | `planning/context/game-design.md`                                |
+| [x] `T005` - Implement first playable commands          | `T004`                 | `planning/context/game-design.md`, `planning/context/stack.md`   |
 | [ ] `T006` - Add Wave 1 Opening Flow                    | `T004`, `T005`         | `planning/context/game-design.md`                                |
 | [ ] `T007` - Add Wave 2 Flood Wave                      | `T006`                 | `planning/context/game-design.md`                                |
 | [ ] `T008` - Add simulator replay and boundary tests    | `T007`                 | `planning/context/stack.md`                                      |
