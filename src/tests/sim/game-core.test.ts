@@ -117,7 +117,7 @@ describe("deterministic simulator core", () => {
     expect(next.eventLog.events).toContainEqual({
       tick: 0,
       type: "wave.started",
-      message: "wave-opening-flow"
+      waveId: "wave-opening-flow"
     });
   });
 
@@ -133,7 +133,7 @@ describe("deterministic simulator core", () => {
     expect(next.eventLog.events).not.toContainEqual({
       tick: 0,
       type: "wave.started",
-      message: "wave-opening-flow"
+      waveId: "wave-opening-flow"
     });
   });
 

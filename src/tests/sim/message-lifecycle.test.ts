@@ -37,6 +37,18 @@ function withSingleWave(wave: WaveDef, overrides: Partial<LevelConfig> = {}): Le
   };
 }
 
+function withWaves(waves: readonly WaveDef[], overrides: Partial<LevelConfig> = {}): LevelConfig {
+  return {
+    ...messageFestivalV0Level,
+    ...overrides,
+    waves: waves.map((wave) => ({
+      ...wave,
+      spawnSchedule: wave.spawnSchedule.map((item) => ({ ...item })),
+      messageTypes: [...wave.messageTypes]
+    }))
+  };
+}
+
 const burstAtZero: WaveDef = {
   id: "wave-burst",
   durationTicks: 20,
@@ -109,6 +121,7 @@ describe("message lifecycle", () => {
       }
     ]);
     expect(snapshot.meters.backlog).toBe(1);
+    expect(snapshot.lanePressure).toEqual([{ pathId: "path-main", backlog: 1, dropped: 0 }]);
     expect(started.eventLog.events).toEqual(
       expect.arrayContaining([
         {
@@ -199,6 +212,7 @@ describe("message lifecycle", () => {
     });
     expect(snapshot.meters.trust).toBe(97);
     expect(snapshot.meters.backlog).toBe(4);
+    expect(snapshot.lanePressure).toEqual([{ pathId: "path-main", backlog: 4, dropped: 1 }]);
     expect(started.eventLog.events).toContainEqual({
       tick: 0,
       type: "message.dropped",
@@ -475,6 +489,105 @@ describe("message lifecycle", () => {
       tick: 2,
       type: "wave.ended",
       waveId: "wave-burst"
+    });
+  });
+
+  it("does not start another wave during recap while messages are still active", () => {
+    const firstWave: WaveDef = {
+      ...burstAtZero,
+      durationTicks: 1,
+      timeoutTicks: 1,
+      spawnSchedule: [{ tick: 0, messageType: "useful", count: 1 }]
+    };
+    const secondWave: WaveDef = {
+      ...burstAtZero,
+      id: "wave-followup",
+      spawnSchedule: [{ tick: 0, messageType: "useful", count: 1 }]
+    };
+    const slowWorkerDefs: readonly BuildingDef[] = messageFestivalV0BuildingDefs.map((def) =>
+      def.id === "worker-yard"
+        ? {
+            ...def,
+            stats: {
+              ...def.stats,
+              processingTicks: 10
+            }
+          }
+        : def
+    );
+    const timedOut = runTicks(
+      step(
+        createGame(withWaves([firstWave, secondWave]), 123, {
+          buildingDefs: slowWorkerDefs,
+          map: messageFestivalV0Map
+        }),
+        [{ type: "StartWave", waveId: "wave-burst" }]
+      ),
+      1
+    );
+
+    const ignored = step(timedOut, [{ type: "StartWave", waveId: "wave-followup" }]);
+
+    expect(toSnapshot(timedOut)).toMatchObject({
+      phase: "recap",
+      activeWaveId: "wave-burst"
+    });
+    expect(toSnapshot(ignored)).toMatchObject({
+      phase: "recap",
+      activeWaveId: "wave-burst"
+    });
+    expect(toSnapshot(ignored).messages).toHaveLength(1);
+    expect(ignored.eventLog.events).not.toContainEqual({
+      tick: timedOut.tick,
+      type: "wave.started",
+      waveId: "wave-followup"
+    });
+  });
+
+  it("starts waiting messages during recap after a worker finishes", () => {
+    const timeoutWave: WaveDef = {
+      ...burstAtZero,
+      durationTicks: 1,
+      timeoutTicks: 1,
+      spawnSchedule: [{ tick: 0, messageType: "useful", count: 2 }]
+    };
+    const fastWorkerDefs: readonly BuildingDef[] = messageFestivalV0BuildingDefs.map((def) =>
+      def.id === "worker-yard"
+        ? {
+            ...def,
+            stats: {
+              ...def.stats,
+              processingTicks: 2
+            }
+          }
+        : def
+    );
+    const timedOut = runTicks(
+      step(
+        createGame(withSingleWave(timeoutWave), 123, {
+          buildingDefs: fastWorkerDefs,
+          map: messageFestivalV0Map
+        }),
+        [{ type: "StartWave", waveId: "wave-burst" }]
+      ),
+      1
+    );
+
+    const recapProgressed = step(timedOut, []);
+
+    expect(toSnapshot(timedOut).messages.map((message) => message.status)).toEqual([
+      "processing",
+      "accepted"
+    ]);
+    expect(toSnapshot(recapProgressed).messages.map((message) => message.status)).toEqual([
+      "delivered",
+      "processing"
+    ]);
+    expect(recapProgressed.eventLog.events).toContainEqual({
+      tick: timedOut.tick,
+      type: "worker.started",
+      messageId: "wave-burst-message-2",
+      workerYardId: "worker-yard@slot_worker_1#1"
     });
   });
 });

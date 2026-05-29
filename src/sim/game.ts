@@ -201,7 +201,11 @@ function applyCommand(state: GameState, command: Command): GameState {
 
   const wave = state.config.waves.find((candidate) => candidate.id === command.waveId);
 
-  if (!wave || (state.phase !== "setup" && state.phase !== "recap")) {
+  if (
+    !wave ||
+    (state.phase !== "setup" && state.phase !== "recap") ||
+    (state.phase === "recap" && state.messages.some(isActiveMessage))
+  ) {
     return state;
   }
 
@@ -213,7 +217,7 @@ function applyCommand(state: GameState, command: Command): GameState {
     eventLog: pushEvent(state.eventLog, {
       tick: state.tick,
       type: "wave.started",
-      message: wave.id
+      waveId: wave.id
     })
   };
 }
@@ -532,8 +536,25 @@ function startWorkers(state: GameState): GameState {
 function recalculateBacklog(state: GameState): GameState {
   const backlog = state.messages.filter(isActiveMessage).length;
   const delta = backlog - state.meters.backlog;
+  const pressureByPath = new Map<string, { backlog: number; dropped: number }>();
 
-  return changeMeter(state, "backlog", delta);
+  for (const message of state.messages) {
+    if (!isActiveMessage(message) && message.status !== "dropped") {
+      continue;
+    }
+
+    const current = pressureByPath.get(message.pathId) ?? { backlog: 0, dropped: 0 };
+    pressureByPath.set(message.pathId, {
+      backlog: current.backlog + (isActiveMessage(message) ? 1 : 0),
+      dropped: current.dropped + (message.status === "dropped" ? 1 : 0)
+    });
+  }
+  const lanePressure = Array.from(pressureByPath, ([pathId, pressure]) => ({
+    pathId,
+    ...pressure
+  }));
+
+  return { ...changeMeter(state, "backlog", delta), lanePressure };
 }
 
 function hasFutureSpawns(wave: WaveDef, elapsed: number): boolean {
@@ -609,6 +630,7 @@ export function step(state: GameState, commandsForTick: readonly Command[]): Gam
     lifecycleState = ageAcceptedMessages(lifecycleState);
     lifecycleState = expirePatientMessages(lifecycleState);
     lifecycleState = progressWorkers(lifecycleState);
+    lifecycleState = startWorkers(lifecycleState);
     lifecycleState = recalculateBacklog(lifecycleState);
   }
 
