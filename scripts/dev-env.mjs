@@ -48,6 +48,7 @@ const child = spawnSync("pnpm", ["dev", ...process.argv.slice(2)], {
     ...process.env,
     MANGROVE_DEV_PORT: port
   },
+  shell: process.platform === "win32",
   stdio: "inherit"
 });
 
