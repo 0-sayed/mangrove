@@ -273,12 +273,14 @@ function setWorkerCount(
 
   const maxWorkers = getBuildingStat(state, workerYard, "maxWorkers");
   const upgradeCost = getBuildingStat(state, workerYard, "workerCountUpgradeCost");
+  const addedWorkers = command.count - state.workerCount;
+  const totalUpgradeCost = upgradeCost * addedWorkers;
 
-  if (command.count > maxWorkers || !canSpend(state, upgradeCost)) {
+  if (command.count > maxWorkers || !canSpend(state, totalUpgradeCost)) {
     return state;
   }
 
-  const nextState = changeMeter(state, "budget", -upgradeCost);
+  const nextState = changeMeter(state, "budget", -totalUpgradeCost);
 
   return {
     ...nextState,
@@ -333,22 +335,42 @@ function isCommandUnlocked(
   state: GameState,
   commandType: "PlaceBuilding" | "SetWorkerCount"
 ): boolean {
-  return (
-    state.config.unlocks?.some(
-      (unlock) =>
-        state.completedWaveIds.includes(unlock.afterWaveId) &&
-        unlock.commandTypes?.includes(commandType)
-    ) ?? false
+  const unlocks = state.config.unlocks;
+
+  if (!unlocks) {
+    return true;
+  }
+
+  const isRestricted = unlocks.some((unlock) => unlock.commandTypes?.includes(commandType));
+
+  if (!isRestricted) {
+    return true;
+  }
+
+  return unlocks.some(
+    (unlock) =>
+      state.completedWaveIds.includes(unlock.afterWaveId) &&
+      unlock.commandTypes?.includes(commandType)
   );
 }
 
 function isBuildingUnlocked(state: GameState, buildingId: string): boolean {
-  return (
-    state.config.unlocks?.some(
-      (unlock) =>
-        state.completedWaveIds.includes(unlock.afterWaveId) &&
-        unlock.buildingIds?.includes(buildingId)
-    ) ?? false
+  const unlocks = state.config.unlocks;
+
+  if (!unlocks) {
+    return true;
+  }
+
+  const isRestricted = unlocks.some((unlock) => unlock.buildingIds?.includes(buildingId));
+
+  if (!isRestricted) {
+    return true;
+  }
+
+  return unlocks.some(
+    (unlock) =>
+      state.completedWaveIds.includes(unlock.afterWaveId) &&
+      unlock.buildingIds?.includes(buildingId)
   );
 }
 

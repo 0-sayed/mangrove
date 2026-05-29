@@ -5,13 +5,16 @@ import {
   messageFestivalV0Level,
   messageFestivalV0Map
 } from "@content/message-festival-v0";
-import type { Command } from "@content/schemas";
+import type { BuildingDef, Command, LevelConfig } from "@content/schemas";
 import { createGame, step, toSnapshot, type GameState } from "@sim/game";
 import { hashState } from "@sim/hash";
 
-function createPlayableGame(): GameState {
-  return createGame(messageFestivalV0Level, 123, {
-    buildingDefs: messageFestivalV0BuildingDefs,
+function createPlayableGame(
+  level: LevelConfig = messageFestivalV0Level,
+  buildingDefs: readonly BuildingDef[] = messageFestivalV0BuildingDefs
+): GameState {
+  return createGame(level, 123, {
+    buildingDefs,
     map: messageFestivalV0Map
   });
 }
@@ -26,10 +29,22 @@ function runTicks(initial: GameState, ticks: number): GameState {
   return state;
 }
 
-function finishOpeningFlow(): GameState {
-  const started = step(createPlayableGame(), [{ type: "StartWave", waveId: "wave-opening-flow" }]);
+function finishOpeningFlow(
+  level: LevelConfig = messageFestivalV0Level,
+  buildingDefs: readonly BuildingDef[] = messageFestivalV0BuildingDefs
+): GameState {
+  const started = step(createPlayableGame(level, buildingDefs), [
+    { type: "StartWave", waveId: "wave-opening-flow" }
+  ]);
 
   return runTicks(started, 220);
+}
+
+function withoutUnlocks(level: LevelConfig): LevelConfig {
+  const nextLevel = { ...level };
+  delete nextLevel.unlocks;
+
+  return nextLevel;
 }
 
 describe("first playable commands", () => {
@@ -103,6 +118,49 @@ describe("first playable commands", () => {
     expect(toSnapshot(tuned).meters.budget).toBe(toSnapshot(afterWaveOne).meters.budget - 20);
     expect(toSnapshot(repeated).workerCount).toBe(2);
     expect(toSnapshot(repeated).meters.budget).toBe(toSnapshot(tuned).meters.budget);
+  });
+
+  it("charges worker tuning once for each added worker", () => {
+    const buildingDefs = messageFestivalV0BuildingDefs.map((building) =>
+      building.id === "worker-yard"
+        ? { ...building, stats: { ...building.stats, maxWorkers: 3 } }
+        : building
+    );
+    const afterWaveOne = finishOpeningFlow(messageFestivalV0Level, buildingDefs);
+    const tuned = step(afterWaveOne, [{ type: "SetWorkerCount", count: 3 }]);
+
+    expect(toSnapshot(tuned).workerCount).toBe(3);
+    expect(toSnapshot(tuned).meters.budget).toBe(toSnapshot(afterWaveOne).meters.budget - 40);
+  });
+
+  it("allows playable commands by default when unlock rules are omitted", () => {
+    const afterWaveOne = finishOpeningFlow(withoutUnlocks(messageFestivalV0Level));
+    const next = step(afterWaveOne, [
+      { type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" },
+      { type: "SetWorkerCount", count: 2 }
+    ]);
+
+    expect(toSnapshot(next).buildings.some((building) => building.defId === "queue-hub")).toBe(
+      true
+    );
+    expect(toSnapshot(next).workerCount).toBe(2);
+  });
+
+  it("allows commands and buildings not targeted by unlock rules", () => {
+    const levelWithUnrelatedUnlock: LevelConfig = {
+      ...messageFestivalV0Level,
+      unlocks: [{ afterWaveId: "wave-flood", buildingIds: ["unused-building"] }]
+    };
+    const afterWaveOne = finishOpeningFlow(levelWithUnrelatedUnlock);
+    const next = step(afterWaveOne, [
+      { type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" },
+      { type: "SetWorkerCount", count: 2 }
+    ]);
+
+    expect(toSnapshot(next).buildings.some((building) => building.defId === "queue-hub")).toBe(
+      true
+    );
+    expect(toSnapshot(next).workerCount).toBe(2);
   });
 
   it("blocks playable commands after the game is complete", () => {
