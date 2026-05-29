@@ -1,23 +1,42 @@
 import Phaser from "phaser";
 import { useEffect, useRef } from "react";
 
-import { BootstrapScene } from "@game/BootstrapScene";
+import type { BuildingDef, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
+import { BATTLEFIELD_VIEW } from "@game/battlefield-view";
+import { BattlefieldScene } from "@game/BattlefieldScene";
 
-export function GameCanvas() {
+export interface GameCanvasProps {
+  readonly level: LevelConfig;
+  readonly map: MapMetadata;
+  readonly buildingDefs: readonly BuildingDef[];
+  readonly snapshot: SimSnapshot;
+}
+
+export function GameCanvas({ level, map, buildingDefs, snapshot }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const sceneRef = useRef<BattlefieldScene | null>(null);
+  const latestSnapshotRef = useRef(snapshot);
+
+  useEffect(() => {
+    latestSnapshotRef.current = snapshot;
+    sceneRef.current?.setSnapshot(snapshot);
+  }, [snapshot]);
 
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
 
+    const scene = new BattlefieldScene({ level, map, buildingDefs, snapshot: latestSnapshotRef.current });
+    sceneRef.current = scene;
+
     const game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: containerRef.current,
-      width: 800,
-      height: 450,
+      width: BATTLEFIELD_VIEW.width,
+      height: BATTLEFIELD_VIEW.height,
       backgroundColor: "#163832",
-      scene: [BootstrapScene],
+      scene: [scene],
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
@@ -25,9 +44,10 @@ export function GameCanvas() {
     });
 
     return () => {
+      sceneRef.current = null;
       game.destroy(true);
     };
-  }, []);
+  }, [buildingDefs, level, map]);
 
   return <section ref={containerRef} className="game-canvas" data-testid="game-canvas" />;
 }
