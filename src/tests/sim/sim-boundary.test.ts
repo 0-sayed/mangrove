@@ -26,7 +26,9 @@ const forbiddenPatterns = [
   /import\s*\(\s*["'](?:\.\.\/)+app\//,
   /import\s*\(\s*["'](?:\.\.\/)+game\//,
   /Math\.random\s*\(/,
-  /Date\.now\s*\(/
+  /Date\.now\s*\(/,
+  /new\s+Date\s*\(/,
+  /performance\.now\s*\(/
 ];
 
 function collectTypeScriptFiles(directory: string): string[] {
@@ -48,7 +50,9 @@ describe("sim boundary", () => {
       'import "phaser";',
       'const scene = await import("phaser");',
       'import "../app/hud";',
-      'const game = await import("../game/scene");'
+      'const game = await import("../game/scene");',
+      "new Date();",
+      "performance.now();"
     ];
 
     const missedSources = forbiddenSources.filter(
