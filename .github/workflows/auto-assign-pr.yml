@@ -2,10 +2,11 @@ name: Auto Assign PR
 
 on:
   pull_request_target:
-    types: [opened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
 
 permissions:
   issues: write
+  # GitHub requires PR write permission when assigning a pull request via the Issues API.
   pull-requests: write
 
 jobs:
@@ -19,6 +20,9 @@ jobs:
           script: |
             const pullRequest = context.payload.pull_request;
             if (!pullRequest || pullRequest.draft) {
+              return;
+            }
+            if (pullRequest.assignees.some((assignee) => assignee.login === pullRequest.user.login)) {
               return;
             }
             try {
