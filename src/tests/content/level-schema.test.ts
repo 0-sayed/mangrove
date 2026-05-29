@@ -94,6 +94,35 @@ describe("first playable content schemas", () => {
     expect(validateLevelConfig(validLevelConfig).ok).toBe(true);
   });
 
+  it("accepts level unlock rules for first playable progression", () => {
+    expect(
+      validateLevelConfig({
+        ...validLevelConfig,
+        unlocks: [
+          {
+            afterWaveId: "wave-opening-flow",
+            buildingIds: ["queue-hub"],
+            commandTypes: ["PlaceBuilding", "SetWorkerCount"]
+          }
+        ]
+      }).ok
+    ).toBe(true);
+  });
+
+  it("rejects invalid unlock command types", () => {
+    expect(
+      validateLevelConfig({
+        ...validLevelConfig,
+        unlocks: [
+          {
+            afterWaveId: "wave-opening-flow",
+            commandTypes: ["UpgradeBuilding"]
+          }
+        ]
+      }).ok
+    ).toBe(false);
+  });
+
   it("accepts valid map metadata", () => {
     expect(validateMapMetadata(validMapMetadata).ok).toBe(true);
   });

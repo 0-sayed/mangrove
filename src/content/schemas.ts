@@ -72,6 +72,17 @@ const RecapSchema = Type.Object(
   { additionalProperties: false }
 );
 
+const UnlockableCommandSchema = Type.Union([Type.Literal("PlaceBuilding"), Type.Literal("SetWorkerCount")]);
+
+const UnlockRuleSchema = Type.Object(
+  {
+    afterWaveId: IdSchema,
+    buildingIds: Type.Optional(Type.Array(IdSchema)),
+    commandTypes: Type.Optional(Type.Array(UnlockableCommandSchema))
+  },
+  { additionalProperties: false }
+);
+
 const LevelConfigSchema = Type.Object(
   {
     id: IdSchema,
@@ -79,6 +90,7 @@ const LevelConfigSchema = Type.Object(
     startingState: StartingStateSchema,
     startingBuildings: Type.Array(StartingBuildingSchema),
     availableBuildings: Type.Array(IdSchema),
+    unlocks: Type.Optional(Type.Array(UnlockRuleSchema)),
     waves: Type.Array(WaveDefSchema),
     winCondition: MeterConditionSchema,
     lossCondition: MeterConditionSchema,
