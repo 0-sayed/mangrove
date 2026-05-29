@@ -4,7 +4,7 @@ setup:
 	pnpm run setup
 
 dev:
-	pnpm dev
+	node scripts/dev-env.mjs
 
 check:
 	pnpm lint && pnpm typecheck
