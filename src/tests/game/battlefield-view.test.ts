@@ -158,6 +158,22 @@ describe("battlefield view model", () => {
     ).toEqual({ x: 240, y: 142 });
   });
 
+  it("anchors direct-handoff failures to the placed API Gate when the queue is unbuilt", () => {
+    expect(
+      messageWorldPosition(
+        messageFestivalV0Map,
+        {
+          id: "dropped-direct-unbuilt-queue",
+          type: "useful",
+          status: "dropped",
+          pathId: "path-main",
+          ageTicks: 32
+        },
+        messageFestivalV0Level.startingBuildings
+      )
+    ).toEqual({ x: 240, y: 238 });
+  });
+
   it("counts queued messages for queue fill", () => {
     expect(queueFillCount(snapshot)).toBe(1);
   });

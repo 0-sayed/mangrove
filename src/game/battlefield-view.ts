@@ -52,14 +52,18 @@ export function buildSlotWorldPosition(map: MapMetadata, slotId: string): WorldP
   return gridToWorld(resolveBuildSlot(map, slotId) ?? missingPoint(slotId));
 }
 
-export function messageWorldPosition(map: MapMetadata, message: SnapshotMessage): WorldPoint {
+export function messageWorldPosition(
+  map: MapMetadata,
+  message: SnapshotMessage,
+  placedBuildings?: readonly BattlefieldBuilding[]
+): WorldPoint {
   const path = map.paths.find((candidate) => candidate.id === message.pathId);
 
   if (!path) {
     throw new Error(`Missing map path ${message.pathId}`);
   }
 
-  const point = gridToWorld(resolveMessageAnchor(map, path, message.status));
+  const point = gridToWorld(resolveMessageAnchor(map, path, message.status, placedBuildings));
 
   return {
     x: point.x,
@@ -118,7 +122,8 @@ export function buildingVisualState(
 function resolveMessageAnchor(
   map: MapMetadata,
   path: MapMetadata["paths"][number],
-  status: SnapshotMessage["status"]
+  status: SnapshotMessage["status"],
+  placedBuildings: readonly BattlefieldBuilding[] | undefined
 ): MapNode {
   if (status === "spawned") {
     return resolveSpawn(map, path.spawnId) ?? missingPoint(path.spawnId);
@@ -128,11 +133,19 @@ function resolveMessageAnchor(
     return resolvePathSlotByRole(map, path, "api-gate") ?? missingPoint("api-gate");
   }
 
-  if (status === "queued" || status === "dropped" || status === "expired") {
+  if (status === "queued") {
     return (
       resolvePathSlotByRole(map, path, "queue-hub") ??
       resolvePathSlotByRole(map, path, "api-gate") ??
       missingPoint("queue-hub or api-gate")
+    );
+  }
+
+  if (status === "dropped" || status === "expired") {
+    return (
+      resolveFailureSlot(map, path, placedBuildings) ??
+      resolvePathSlotByRole(map, path, "api-gate") ??
+      missingPoint("placed queue-hub or api-gate")
     );
   }
 
@@ -150,6 +163,23 @@ function resolvePathSlotByRole(
 ): MapNode | undefined {
   return map.buildSlots.find(
     (candidate) => candidate.role === role && path.nodeIds.includes(candidate.id)
+  );
+}
+
+function resolveFailureSlot(
+  map: MapMetadata,
+  path: MapMetadata["paths"][number],
+  placedBuildings: readonly BattlefieldBuilding[] | undefined
+): MapNode | undefined {
+  if (placedBuildings === undefined) {
+    return resolvePathSlotByRole(map, path, "queue-hub");
+  }
+
+  return map.buildSlots.find(
+    (slot) =>
+      slot.role === "queue-hub" &&
+      path.nodeIds.includes(slot.id) &&
+      placedBuildings.some((building) => building.slotId === slot.id)
   );
 }
 

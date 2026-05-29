@@ -127,7 +127,7 @@ export class BattlefieldScene extends Phaser.Scene {
     for (const message of activePacketMessages(this.#snapshot)) {
       activeMessageIds.add(message.id);
 
-      const position = messageWorldPosition(this.#map, message);
+      const position = messageWorldPosition(this.#map, message, this.#snapshot.buildings);
       const packet = this.#packetsById.get(message.id) ?? this.createPacket(message.id);
       const isFailed = message.status === "dropped" || message.status === "expired";
 
