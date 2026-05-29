@@ -1,4 +1,4 @@
-import type { LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
+import type { MapMetadata, SimSnapshot } from "@content/schemas";
 
 export interface WorldPoint {
   readonly x: number;
@@ -23,7 +23,7 @@ interface MapNode {
 }
 
 type SnapshotMessage = SimSnapshot["messages"][number];
-type StartingBuilding = LevelConfig["startingBuildings"][number];
+export type BattlefieldBuilding = Pick<SimSnapshot["buildings"][number], "defId" | "slotId">;
 
 function gridToWorld(point: Pick<MapNode, "x" | "y">): WorldPoint {
   return {
@@ -41,8 +41,8 @@ export function pathWorldPoints(map: MapMetadata, pathId: string): WorldPoint[] 
 
   const points = path.nodeIds.map((nodeId) => gridToWorld(resolvePathNode(map, nodeId)));
 
-  if (points.length < 5) {
-    throw new Error(`Path ${pathId} must resolve to at least five visible nodes`);
+  if (points.length < 2) {
+    throw new Error(`Path ${pathId} must resolve to at least two visible nodes`);
   }
 
   return points;
@@ -71,7 +71,20 @@ export function queueFillCount(snapshot: SimSnapshot): number {
   return snapshot.messages.filter((message) => message.status === "queued").length;
 }
 
-export function buildingVisualState(snapshot: SimSnapshot, building: StartingBuilding): BuildingVisualState {
+export function battlefieldBuildings(
+  snapshot: SimSnapshot
+): readonly SimSnapshot["buildings"][number][] {
+  return snapshot.buildings;
+}
+
+export function activePacketMessages(snapshot: SimSnapshot): readonly SnapshotMessage[] {
+  return snapshot.messages.filter((message) => message.status !== "delivered");
+}
+
+export function buildingVisualState(
+  snapshot: SimSnapshot,
+  building: BattlefieldBuilding
+): BuildingVisualState {
   const snapshotBuilding = snapshot.buildings.find(
     (candidate) => candidate.defId === building.defId && candidate.slotId === building.slotId
   );
@@ -92,7 +105,10 @@ export function buildingVisualState(snapshot: SimSnapshot, building: StartingBui
     return "filling";
   }
 
-  if (building.defId === "worker-yard" && snapshot.messages.some((message) => message.status === "processing")) {
+  if (
+    building.defId === "worker-yard" &&
+    snapshot.messages.some((message) => message.status === "processing")
+  ) {
     return "processing";
   }
 
@@ -109,15 +125,19 @@ function resolveMessageAnchor(
   }
 
   if (status === "accepted") {
-    return resolvePathSlotByRole(map, path, "api-gate", "ingress");
+    return resolvePathSlotByRole(map, path, "api-gate") ?? missingPoint("api-gate");
   }
 
   if (status === "queued" || status === "dropped" || status === "expired") {
-    return resolvePathSlotByRole(map, path, "queue-hub", "queue");
+    return (
+      resolvePathSlotByRole(map, path, "queue-hub") ??
+      resolvePathSlotByRole(map, path, "api-gate") ??
+      missingPoint("queue-hub or api-gate")
+    );
   }
 
   if (status === "processing") {
-    return resolvePathSlotByRole(map, path, "worker-yard", "worker");
+    return resolvePathSlotByRole(map, path, "worker-yard") ?? missingPoint("worker-yard");
   }
 
   return resolveExit(map, path.exitId) ?? missingPoint(path.exitId);
@@ -126,20 +146,20 @@ function resolveMessageAnchor(
 function resolvePathSlotByRole(
   map: MapMetadata,
   path: MapMetadata["paths"][number],
-  role: MapMetadata["buildSlots"][number]["role"],
-  label: string
-): MapNode {
-  const slot = map.buildSlots.find((candidate) => candidate.role === role && path.nodeIds.includes(candidate.id));
-
-  if (!slot) {
-    throw new Error(`Missing ${label} point for path ${path.id}`);
-  }
-
-  return slot;
+  role: MapMetadata["buildSlots"][number]["role"]
+): MapNode | undefined {
+  return map.buildSlots.find(
+    (candidate) => candidate.role === role && path.nodeIds.includes(candidate.id)
+  );
 }
 
 function resolvePathNode(map: MapMetadata, nodeId: string): MapNode {
-  return resolveSpawn(map, nodeId) ?? resolveBuildSlot(map, nodeId) ?? resolveExit(map, nodeId) ?? missingPoint(nodeId);
+  return (
+    resolveSpawn(map, nodeId) ??
+    resolveBuildSlot(map, nodeId) ??
+    resolveExit(map, nodeId) ??
+    missingPoint(nodeId)
+  );
 }
 
 function resolveSpawn(map: MapMetadata, spawnId: string): MapNode | undefined {
@@ -159,5 +179,7 @@ function missingPoint(pointId: string): never {
 }
 
 function isAcceptedOrBeyondApiGate(message: SnapshotMessage): boolean {
-  return message.status === "accepted" || message.status === "queued" || message.status === "processing";
+  return (
+    message.status === "accepted" || message.status === "queued" || message.status === "processing"
+  );
 }

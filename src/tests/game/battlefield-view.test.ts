@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { messageFestivalV0Level, messageFestivalV0Map } from "@content/message-festival-v0";
-import type { SimSnapshot } from "@content/schemas";
+import type { MapMetadata, SimSnapshot } from "@content/schemas";
 import {
+  activePacketMessages,
   BATTLEFIELD_VIEW,
   buildSlotWorldPosition,
+  battlefieldBuildings,
   buildingVisualState,
   messageWorldPosition,
   pathWorldPoints,
@@ -37,7 +39,37 @@ const snapshot: SimSnapshot = {
 const queuedMessage = getItem(snapshot.messages, 0, "queued message");
 const processingMessage = getItem(snapshot.messages, 1, "processing message");
 const startingApiGate = getItem(messageFestivalV0Level.startingBuildings, 0, "starting API Gate");
-const startingWorkerYard = getItem(messageFestivalV0Level.startingBuildings, 1, "starting Worker Yard");
+const startingWorkerYard = getItem(
+  messageFestivalV0Level.startingBuildings,
+  1,
+  "starting Worker Yard"
+);
+const shortPathMap: MapMetadata = {
+  id: "short-map",
+  paths: [
+    { id: "path-short", spawnId: "spawn_1", exitId: "exit_1", nodeIds: ["spawn_1", "exit_1"] }
+  ],
+  buildSlots: [],
+  spawns: [{ id: "spawn_1", x: 1, y: 2 }],
+  exits: [{ id: "exit_1", x: 3, y: 2 }]
+};
+const noQueueMap: MapMetadata = {
+  id: "no-queue-map",
+  paths: [
+    {
+      id: "path-direct",
+      spawnId: "spawn_1",
+      exitId: "exit_1",
+      nodeIds: ["spawn_1", "slot_ingress_1", "slot_worker_1", "exit_1"]
+    }
+  ],
+  buildSlots: [
+    { id: "slot_ingress_1", role: "api-gate", x: 4, y: 3 },
+    { id: "slot_worker_1", role: "worker-yard", x: 8, y: 3 }
+  ],
+  spawns: [{ id: "spawn_1", x: 1, y: 3 }],
+  exits: [{ id: "exit_1", x: 12, y: 3 }]
+};
 
 function getItem<T>(items: readonly T[], index: number, label: string): T {
   const item = items[index];
@@ -71,6 +103,13 @@ describe("battlefield view model", () => {
     ]);
   });
 
+  it("accepts schema-valid paths with two visible nodes", () => {
+    expect(pathWorldPoints(shortPathMap, "path-short")).toEqual([
+      { x: 144, y: 128 },
+      { x: 208, y: 128 }
+    ]);
+  });
+
   it("maps build slots to world positions", () => {
     expect(buildSlotWorldPosition(messageFestivalV0Map, "slot_queue_1")).toEqual({
       x: BATTLEFIELD_VIEW.originX + 6 * BATTLEFIELD_VIEW.tileSize,
@@ -80,7 +119,10 @@ describe("battlefield view model", () => {
 
   it("anchors active messages to their lane stations", () => {
     expect(messageWorldPosition(messageFestivalV0Map, queuedMessage)).toEqual({ x: 304, y: 238 });
-    expect(messageWorldPosition(messageFestivalV0Map, processingMessage)).toEqual({ x: 368, y: 238 });
+    expect(messageWorldPosition(messageFestivalV0Map, processingMessage)).toEqual({
+      x: 368,
+      y: 238
+    });
   });
 
   it("anchors dropped and expired messages to the queue station", () => {
@@ -104,8 +146,48 @@ describe("battlefield view model", () => {
     ).toEqual({ x: 304, y: 238 });
   });
 
+  it("falls back to the API gate for failures when a path has no queue hub", () => {
+    expect(
+      messageWorldPosition(noQueueMap, {
+        id: "dropped-direct-1",
+        type: "useful",
+        status: "dropped",
+        pathId: "path-direct",
+        ageTicks: 32
+      })
+    ).toEqual({ x: 240, y: 142 });
+  });
+
   it("counts queued messages for queue fill", () => {
     expect(queueFillCount(snapshot)).toBe(1);
+  });
+
+  it("uses snapshot buildings as the battlefield render source", () => {
+    expect(battlefieldBuildings(snapshot).map((building) => building.defId)).toEqual([
+      "api-gate",
+      "queue-hub",
+      "worker-yard"
+    ]);
+  });
+
+  it("omits delivered historical messages from active packet rendering", () => {
+    const deliveredSnapshot = snapshotWith({
+      messages: [
+        ...snapshot.messages,
+        {
+          id: "delivered-1",
+          type: "useful",
+          status: "delivered",
+          pathId: "path-main",
+          ageTicks: 42
+        }
+      ]
+    });
+
+    expect(activePacketMessages(deliveredSnapshot).map((message) => message.id)).toEqual([
+      "queued-1",
+      "processing-1"
+    ]);
   });
 
   it("derives visual state for starting buildings", () => {
@@ -114,10 +196,19 @@ describe("battlefield view model", () => {
 
   it("prefers saturated and processing snapshot building states", () => {
     const saturatedSnapshot = snapshotWith({
-      buildings: [{ id: "building-api-gate", defId: "api-gate", slotId: "slot_ingress_1", state: "saturated" }]
+      buildings: [
+        { id: "building-api-gate", defId: "api-gate", slotId: "slot_ingress_1", state: "saturated" }
+      ]
     });
     const processingSnapshot = snapshotWith({
-      buildings: [{ id: "building-api-gate", defId: "api-gate", slotId: "slot_ingress_1", state: "processing" }]
+      buildings: [
+        {
+          id: "building-api-gate",
+          defId: "api-gate",
+          slotId: "slot_ingress_1",
+          state: "processing"
+        }
+      ]
     });
 
     expect(buildingVisualState(saturatedSnapshot, startingApiGate)).toBe("saturated");
@@ -125,7 +216,9 @@ describe("battlefield view model", () => {
   });
 
   it("derives queue-hub filling from queued messages", () => {
-    expect(buildingVisualState(snapshot, { defId: "queue-hub", slotId: "slot_queue_1" })).toBe("filling");
+    expect(buildingVisualState(snapshot, { defId: "queue-hub", slotId: "slot_queue_1" })).toBe(
+      "filling"
+    );
   });
 
   it("derives worker-yard processing from processing messages", () => {
@@ -134,7 +227,9 @@ describe("battlefield view model", () => {
 
   it("falls back to idle when no visual activity applies", () => {
     const idleSnapshot = snapshotWith({
-      buildings: [{ id: "building-api-gate", defId: "api-gate", slotId: "slot_ingress_1", state: "idle" }],
+      buildings: [
+        { id: "building-api-gate", defId: "api-gate", slotId: "slot_ingress_1", state: "idle" }
+      ],
       messages: []
     });
 

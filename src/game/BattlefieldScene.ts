@@ -2,7 +2,9 @@ import Phaser from "phaser";
 
 import type { BuildingDef, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
 import {
+  activePacketMessages,
   BATTLEFIELD_VIEW,
+  battlefieldBuildings,
   buildSlotWorldPosition,
   buildingVisualState,
   messageWorldPosition,
@@ -18,26 +20,26 @@ export interface BattlefieldSceneOptions {
 }
 
 interface BuildingRender {
-  readonly building: LevelConfig["startingBuildings"][number];
   readonly body: Phaser.GameObjects.Rectangle;
+  readonly label: Phaser.GameObjects.Text;
 }
 
 export class BattlefieldScene extends Phaser.Scene {
-  readonly #level: LevelConfig;
   readonly #map: MapMetadata;
   readonly #buildingDefsById: ReadonlyMap<string, BuildingDef>;
   #snapshot: SimSnapshot;
   #queueText?: Phaser.GameObjects.Text;
-  readonly #buildingRenders: BuildingRender[] = [];
+  readonly #buildingRenders = new Map<string, BuildingRender>();
   readonly #packetsById = new Map<string, Phaser.GameObjects.Ellipse>();
 
   public constructor(options: BattlefieldSceneOptions) {
     super("battlefield-scene");
 
-    this.#level = options.level;
     this.#map = options.map;
     this.#snapshot = options.snapshot;
-    this.#buildingDefsById = new Map(options.buildingDefs.map((buildingDef) => [buildingDef.id, buildingDef]));
+    this.#buildingDefsById = new Map(
+      options.buildingDefs.map((buildingDef) => [buildingDef.id, buildingDef])
+    );
   }
 
   public create(): void {
@@ -46,7 +48,6 @@ export class BattlefieldScene extends Phaser.Scene {
     this.drawTerrain();
     this.drawLanePaths();
     this.drawBuildSlots();
-    this.drawStartingBuildings();
     this.#queueText = this.add.text(32, BATTLEFIELD_VIEW.height - 34, "", {
       color: "#f8f5ec",
       fontFamily: "monospace",
@@ -101,34 +102,29 @@ export class BattlefieldScene extends Phaser.Scene {
     }
   }
 
-  private drawStartingBuildings(): void {
-    for (const building of this.#level.startingBuildings) {
-      const position = buildSlotWorldPosition(this.#map, building.slotId);
-      const def = this.#buildingDefsById.get(building.defId);
-      const body = this.add.rectangle(position.x, position.y, 72, 56, this.buildingFillColor(def?.role), 1);
-
-      body.setStrokeStyle(3, 0xf8f5ec, 0.65);
-      this.add
-        .text(position.x, position.y, this.buildingBadge(def, building.defId), {
-          color: "#f8f5ec",
-          fontFamily: "monospace",
-          fontSize: "12px"
-        })
-        .setOrigin(0.5);
-      this.#buildingRenders.push({ building, body });
-    }
-  }
-
   private renderSnapshot(): void {
-    for (const render of this.#buildingRenders) {
-      const state = buildingVisualState(this.#snapshot, render.building);
+    const visibleBuildingIds = new Set<string>();
+
+    for (const building of battlefieldBuildings(this.#snapshot)) {
+      visibleBuildingIds.add(building.id);
+
+      const render = this.ensureBuildingRender(building);
+      const state = buildingVisualState(this.#snapshot, building);
       render.body.setStrokeStyle(3, this.strokeColorForState(state), state === "idle" ? 0.6 : 1);
       render.body.setAlpha(state === "idle" ? 0.82 : 1);
     }
 
+    for (const [buildingId, render] of this.#buildingRenders) {
+      if (!visibleBuildingIds.has(buildingId)) {
+        render.body.destroy();
+        render.label.destroy();
+        this.#buildingRenders.delete(buildingId);
+      }
+    }
+
     const activeMessageIds = new Set<string>();
 
-    for (const message of this.#snapshot.messages) {
+    for (const message of activePacketMessages(this.#snapshot)) {
       activeMessageIds.add(message.id);
 
       const position = messageWorldPosition(this.#map, message);
@@ -136,7 +132,10 @@ export class BattlefieldScene extends Phaser.Scene {
       const isFailed = message.status === "dropped" || message.status === "expired";
 
       packet.setPosition(position.x, position.y);
-      packet.setFillStyle(isFailed ? 0xd44f4f : 0xf8f5ec, message.status === "delivered" ? 0.45 : 0.95);
+      packet.setFillStyle(
+        isFailed ? 0xd44f4f : 0xf8f5ec,
+        message.status === "delivered" ? 0.45 : 0.95
+      );
     }
 
     for (const [messageId, packet] of this.#packetsById) {
@@ -153,7 +152,43 @@ export class BattlefieldScene extends Phaser.Scene {
     );
   }
 
-  private strokePolyline(graphics: Phaser.GameObjects.Graphics, points: readonly { readonly x: number; readonly y: number }[]): void {
+  private ensureBuildingRender(building: SimSnapshot["buildings"][number]): BuildingRender {
+    const existingRender = this.#buildingRenders.get(building.id);
+
+    if (existingRender) {
+      return existingRender;
+    }
+
+    const position = buildSlotWorldPosition(this.#map, building.slotId);
+    const def = this.#buildingDefsById.get(building.defId);
+    const body = this.add.rectangle(
+      position.x,
+      position.y,
+      72,
+      56,
+      this.buildingFillColor(def?.role),
+      1
+    );
+    const label = this.add
+      .text(position.x, position.y, this.buildingBadge(def, building.defId), {
+        color: "#f8f5ec",
+        fontFamily: "monospace",
+        fontSize: "12px"
+      })
+      .setOrigin(0.5);
+
+    body.setStrokeStyle(3, 0xf8f5ec, 0.65);
+
+    const render = { body, label };
+    this.#buildingRenders.set(building.id, render);
+
+    return render;
+  }
+
+  private strokePolyline(
+    graphics: Phaser.GameObjects.Graphics,
+    points: readonly { readonly x: number; readonly y: number }[]
+  ): void {
     for (let index = 1; index < points.length; index += 1) {
       const previous = points[index - 1];
       const current = points[index];
