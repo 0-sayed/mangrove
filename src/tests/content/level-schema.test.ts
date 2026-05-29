@@ -102,6 +102,10 @@ describe("first playable content schemas", () => {
     expect(validateBuildingDef(validBuildingDef).ok).toBe(true);
   });
 
+  it("rejects building stat records with empty keys", () => {
+    expect(validateBuildingDef({ ...validBuildingDef, stats: { "": 1 } }).ok).toBe(false);
+  });
+
   it("accepts valid wave definitions", () => {
     expect(validateWaveDef(validWaveDef).ok).toBe(true);
   });

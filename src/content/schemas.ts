@@ -133,7 +133,7 @@ const BuildingDefSchema = Type.Object(
     role: BuildingRoleSchema,
     cost: NonNegativeNumberSchema,
     allowedSlots: Type.Array(IdSchema),
-    stats: Type.Record(Type.String(), NonNegativeNumberSchema),
+    stats: Type.Record(Type.String({ pattern: "^.+$" }), NonNegativeNumberSchema, { additionalProperties: false }),
     visibleStates: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })
   },
   { additionalProperties: false }
