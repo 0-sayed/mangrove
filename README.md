@@ -21,9 +21,10 @@ Start the browser app:
 make dev
 ```
 
-Default local URL: `http://127.0.0.1:5177`
+Default local URL on `main`: `http://127.0.0.1:5177`
 
-For parallel worktrees, override the port:
+For parallel worktrees, `make dev` assigns a stable branch port automatically.
+Use `MANGROVE_DEV_PORT` only when you need to override it:
 
 ```bash
 MANGROVE_DEV_PORT=5178 make dev
