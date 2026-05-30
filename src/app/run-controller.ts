@@ -11,7 +11,6 @@ export const RUN_TICK_INTERVAL_MS = 100;
 const DEFAULT_RUN_SEED = 12345;
 const QUEUE_HUB_BUILDING_ID = "queue-hub";
 const QUEUE_HUB_SLOT_ID = "slot_queue_1";
-const TARGET_WORKER_COUNT = 2;
 const OPENING_WAVE_ID = "wave-opening-flow";
 const ACTIVE_MESSAGE_STATUSES = new Set<SimSnapshot["messages"][number]["status"]>([
   "accepted",
@@ -150,10 +149,10 @@ export function createPlaceQueueHubCommand(): Command {
   };
 }
 
-export function createIncreaseWorkerCountCommand(): Command {
+export function createIncreaseWorkerCountCommand(currentCount: number): Command {
   return {
     type: "SetWorkerCount",
-    count: TARGET_WORKER_COUNT
+    count: currentCount + 1
   };
 }
 

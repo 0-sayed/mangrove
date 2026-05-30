@@ -15,7 +15,12 @@ export function App() {
   return (
     <ErrorBoundary>
       <main className="app-shell">
-        <Hud snapshot={snapshot} controls={controls} onCommand={sendCommand} />
+        <Hud
+          levelId={messageFestivalV0Level.id}
+          snapshot={snapshot}
+          controls={controls}
+          onCommand={sendCommand}
+        />
         <GameCanvas
           level={messageFestivalV0Level}
           map={messageFestivalV0Map}

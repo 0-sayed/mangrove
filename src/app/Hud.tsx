@@ -8,6 +8,7 @@ import {
 } from "./run-controller";
 
 interface HudProps {
+  readonly levelId: string;
   readonly snapshot: SimSnapshot;
   readonly controls: RunControls;
   readonly onCommand: (command: Command) => void;
@@ -28,13 +29,13 @@ function Meter({ label, value, tone }: MeterProps) {
   );
 }
 
-export function Hud({ snapshot, controls, onCommand }: HudProps) {
+export function Hud({ levelId, snapshot, controls, onCommand }: HudProps) {
   return (
     <section className="hud" aria-label="Battlefield HUD">
       <div className="hud__identity">
         <p className="eyebrow">Production Town</p>
         <h1>Mangrove</h1>
-        <p className="level-label">message-festival-v0</p>
+        <p className="level-label">{levelId}</p>
       </div>
 
       <div className="hud__status" aria-label="Run status">
@@ -74,7 +75,7 @@ export function Hud({ snapshot, controls, onCommand }: HudProps) {
           type="button"
           disabled={!controls.canIncreaseWorkerCount}
           onClick={() => {
-            onCommand(createIncreaseWorkerCountCommand());
+            onCommand(createIncreaseWorkerCountCommand(controls.workerCount));
           }}
         >
           Workers {controls.workerCount}/{controls.maxWorkerCount} (+

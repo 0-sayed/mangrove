@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   advanceRun,
   applyRunCommand,
+  createIncreaseWorkerCountCommand,
   createInitialRun,
   getRunControls,
   queueRunCommand,
@@ -94,5 +95,12 @@ describe("run controller", () => {
 
     expect(getRunControls(started.game).isAutoAdvancing).toBe(true);
     expect(getRunControls(afterOpening.game).isAutoAdvancing).toBe(false);
+  });
+
+  it("creates worker tuning commands from the current worker count", () => {
+    expect(createIncreaseWorkerCountCommand(2)).toEqual({
+      type: "SetWorkerCount",
+      count: 3
+    });
   });
 });
