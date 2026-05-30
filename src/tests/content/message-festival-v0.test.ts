@@ -62,6 +62,34 @@ describe("Message Festival v0 content", () => {
     expect(totalSpawned("wave-flood")).toBe(48);
   });
 
+  it("authors Wave 1 Opening Flow as a calm observation wave", () => {
+    const openingFlow = messageFestivalV0Level.waves.find(
+      (wave) => wave.id === "wave-opening-flow"
+    );
+
+    expect(openingFlow).toEqual({
+      id: "wave-opening-flow",
+      durationTicks: 200,
+      timeoutTicks: 300,
+      spawnSchedule: [
+        { tick: 0, messageType: "useful", count: 1 },
+        { tick: 16, messageType: "useful", count: 1 },
+        { tick: 32, messageType: "useful", count: 1 },
+        { tick: 48, messageType: "useful", count: 1 },
+        { tick: 64, messageType: "useful", count: 1 },
+        { tick: 80, messageType: "useful", count: 1 },
+        { tick: 96, messageType: "useful", count: 1 },
+        { tick: 112, messageType: "useful", count: 1 },
+        { tick: 128, messageType: "useful", count: 1 },
+        { tick: 144, messageType: "useful", count: 1 },
+        { tick: 160, messageType: "useful", count: 1 },
+        { tick: 176, messageType: "useful", count: 1 }
+      ],
+      messageTypes: ["useful"],
+      recapId: "recap-opening-flow"
+    });
+  });
+
   it("unlocks Queue Hub placement and worker tuning after Wave 1", () => {
     expect(messageFestivalV0Level.unlocks).toEqual([
       {

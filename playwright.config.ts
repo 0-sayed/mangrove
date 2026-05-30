@@ -2,12 +2,16 @@ import { defineConfig, devices } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 
 function resolveDevPort() {
+  if (process.env["MANGROVE_DEV_PORT"]) {
+    return Number(process.env["MANGROVE_DEV_PORT"]);
+  }
+
   const result = spawnSync(process.execPath, ["scripts/dev-env.mjs", "--print"], {
     encoding: "utf8"
   });
-  const match = result.stdout.match(/^MANGROVE_DEV_PORT=(?<port>\d+)$/m);
+  const match = result.stdout?.match(/^MANGROVE_DEV_PORT=(?<port>\d+)$/m);
 
-  return Number(process.env["MANGROVE_DEV_PORT"] ?? match?.groups?.["port"] ?? 5177);
+  return Number(match?.groups?.["port"] ?? 5177);
 }
 
 const devPort = resolveDevPort();
