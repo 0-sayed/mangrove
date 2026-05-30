@@ -67,7 +67,7 @@ Each wave is the earliest parallel stage for those tasks. Tasks in the same wave
 | 2    | [x]  | `T002`, `T003`         | `feat/t002-message-festival-content`, `feat/t003-sim-core`                |
 | 3    | [x]  | `T004`                 | `feat/t004-message-lifecycle`                                             |
 | 4    | [x]  | `T005`, `T009`         | `feat/t005-playable-commands`, `feat/t009-phaser-battlefield`             |
-| 5    | [x]  | `T006`, `T010`, `T011` | `feat/t006-opening-flow`, `feat/t010-phaser-input`, `feat/t011-react-hud` |
+| 5    | [ ]  | `T006`, `T010`, `T011` | `feat/t006-opening-flow`, `feat/t010-phaser-input`, `feat/t011-react-hud` |
 | 6    | [ ]  | `T007`, `T013`         | `feat/t007-flood-wave`, `feat/t013-starter-assets-overlays`               |
 | 7    | [ ]  | `T008`, `T012`         | `feat/t008-replay-boundary-tests`, `feat/t012-wave-recap`                 |
 | 8    | [ ]  | `T014`                 | `feat/t014-browser-smoke-first-playable`                                  |
