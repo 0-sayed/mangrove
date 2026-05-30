@@ -43,10 +43,28 @@ select {
 }
 
 .hud {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: start;
+  gap: 12px 18px;
+}
+
+.hud__identity {
+  min-width: 0;
+}
+
+.hud__status,
+.hud__controls,
+.meters {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.hud__status {
+  color: #d9efe4;
+  font-size: 0.82rem;
 }
 
 .eyebrow {
@@ -69,18 +87,64 @@ h1 {
 }
 
 .meters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
+  grid-column: 1 / -1;
 }
 
-.meters span,
+.hud__status span,
+.meter,
 .diagnostics span {
   border: 1px solid rgba(248, 245, 236, 0.24);
   border-radius: 4px;
   padding: 6px 10px;
   background: rgba(16, 24, 32, 0.48);
+}
+
+.meter {
+  display: inline-grid;
+  min-width: 96px;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.meter strong {
+  font-size: 1.1rem;
+}
+
+.meter--trust strong {
+  color: #f8f5ec;
+}
+
+.meter--budget strong {
+  color: #f5c76b;
+}
+
+.meter--backlog strong {
+  color: #9dd7ff;
+}
+
+.hud__controls {
+  grid-column: 1 / -1;
+}
+
+.hud__controls button {
+  min-height: 38px;
+  border: 1px solid rgba(248, 245, 236, 0.28);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #f8f5ec;
+  background: #27584f;
+  cursor: pointer;
+}
+
+.hud__controls button:disabled {
+  color: rgba(248, 245, 236, 0.48);
+  background: rgba(16, 24, 32, 0.42);
+  cursor: not-allowed;
+}
+
+.hud__controls button:not(:disabled):hover {
+  background: #326b60;
 }
 
 .game-canvas {
@@ -108,4 +172,20 @@ h1 {
 .app-shell--error {
   place-items: center;
   text-align: center;
+}
+
+@media (max-width: 720px) {
+  .hud {
+    grid-template-columns: 1fr;
+  }
+
+  .hud__status,
+  .hud__controls,
+  .meters {
+    justify-content: flex-start;
+  }
+
+  .hud__controls button {
+    flex: 1 1 160px;
+  }
 }

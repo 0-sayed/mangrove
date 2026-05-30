@@ -16,6 +16,14 @@ test("renders the React shell and a nonblank Phaser battlefield", async ({ page 
   const battlefieldCanvas = page.locator("[data-testid='game-canvas'] canvas");
   await expect(battlefieldCanvas).toBeVisible();
 
+  await expect(page.getByRole("button", { name: "Start Opening Flow" })).toBeEnabled();
+  await page.getByRole("button", { name: "Start Opening Flow" }).click();
+  await expect(page.getByLabel("Run phase")).toContainText("wave");
+  await expect(page.getByLabel("Active wave")).toContainText("Opening Flow");
+  await expect
+    .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
+    .toBeGreaterThan(1);
+
   const battlefieldPixels = await battlefieldCanvas.evaluate((element) => {
     if (!(element instanceof HTMLCanvasElement)) {
       throw new Error("Expected a canvas element.");
