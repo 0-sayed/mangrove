@@ -16,6 +16,15 @@ type GameRunAction =
   | { readonly type: "advance"; readonly ticks?: number }
   | { readonly type: "command"; readonly command: Command };
 
+const MAX_RUN_CATCH_UP_TICKS = 10;
+
+export function calculateRunCatchUpTicks(lastAdvanceTime: number, now: number) {
+  return Math.min(
+    MAX_RUN_CATCH_UP_TICKS,
+    Math.max(1, Math.floor((now - lastAdvanceTime) / RUN_TICK_INTERVAL_MS))
+  );
+}
+
 function gameRunReducer(state: GameRun, action: GameRunAction): GameRun {
   switch (action.type) {
     case "advance":
@@ -45,10 +54,7 @@ export function useGameRun() {
     const intervalId = window.setInterval(() => {
       const now = window.performance.now();
       const lastAdvanceTime = lastAdvanceTimeRef.current ?? now;
-      const elapsedTicks = Math.max(
-        1,
-        Math.floor((now - lastAdvanceTime) / RUN_TICK_INTERVAL_MS)
-      );
+      const elapsedTicks = calculateRunCatchUpTicks(lastAdvanceTime, now);
 
       lastAdvanceTimeRef.current = lastAdvanceTime + elapsedTicks * RUN_TICK_INTERVAL_MS;
       dispatch({ type: "advance", ticks: elapsedTicks });
