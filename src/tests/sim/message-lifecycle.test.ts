@@ -284,9 +284,9 @@ describe("message lifecycle", () => {
     expect(trustEvents).toEqual([
       { tick: 0, type: "meter.changed", meter: "trust", delta: -1, value: 0 }
     ]);
-    expect(toSnapshot(started).messages.filter((message) => message.status === "dropped")).toHaveLength(
-      3
-    );
+    expect(
+      toSnapshot(started).messages.filter((message) => message.status === "dropped")
+    ).toHaveLength(3);
     expect(
       started.eventLog.events.filter(
         (event) => event.type === "message.dropped" && event.reason === "direct-handoff-overflow"
@@ -374,10 +374,14 @@ describe("message lifecycle", () => {
           }
         : def
     );
-    const initial = createGame(withSingleWave(blockedWave), 123, {
-      buildingDefs: slowWorkerDefs,
-      map: messageFestivalV0Map
-    });
+    const initial = createGame(
+      withWaves([blockedWave, { ...burstAtZero, id: "wave-followup" }]),
+      123,
+      {
+        buildingDefs: slowWorkerDefs,
+        map: messageFestivalV0Map
+      }
+    );
 
     const started = step(initial, [{ type: "StartWave", waveId: "wave-burst" }]);
     const expired = runTicks(started, 120);
@@ -452,7 +456,7 @@ describe("message lifecycle", () => {
     const resolved = runTicks(started, 10);
 
     expect(toSnapshot(resolved)).toMatchObject({
-      phase: "recap",
+      phase: "complete",
       activeWaveId: "wave-burst",
       meters: {
         budget: 51,
@@ -484,7 +488,7 @@ describe("message lifecycle", () => {
 
     const timedOut = runTicks(started, 2);
 
-    expect(toSnapshot(timedOut).phase).toBe("recap");
+    expect(toSnapshot(timedOut).phase).toBe("complete");
     expect(timedOut.eventLog.events).toContainEqual({
       tick: 2,
       type: "wave.ended",
@@ -564,7 +568,7 @@ describe("message lifecycle", () => {
     );
     const timedOut = runTicks(
       step(
-        createGame(withSingleWave(timeoutWave), 123, {
+        createGame(withWaves([timeoutWave, { ...burstAtZero, id: "wave-followup" }]), 123, {
           buildingDefs: fastWorkerDefs,
           map: messageFestivalV0Map
         }),

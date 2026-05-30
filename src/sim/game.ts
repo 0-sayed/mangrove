@@ -162,7 +162,7 @@ export function createGame(
     alerts: [],
     completedWaveIds: [],
     commandHistory: [],
-    eventLog: createEventLog(20)
+    eventLog: createEventLog(200)
   };
 }
 
@@ -377,6 +377,12 @@ function isBuildingUnlocked(state: GameState, buildingId: string): boolean {
 
 function activeWave(state: GameState): WaveDef | undefined {
   return state.config.waves.find((wave) => wave.id === state.activeWaveId);
+}
+
+function isFinalWave(state: GameState, waveId: string): boolean {
+  const finalWave = state.config.waves.at(-1);
+
+  return finalWave?.id === waveId;
 }
 
 function waveElapsedTick(state: GameState): number | undefined {
@@ -737,7 +743,7 @@ function maybeEndWave(state: GameState): GameState {
 
   return {
     ...state,
-    phase: "recap",
+    phase: isFinalWave(state, wave.id) ? "complete" : "recap",
     completedWaveIds,
     eventLog: pushEvent(state.eventLog, {
       tick: state.tick,
