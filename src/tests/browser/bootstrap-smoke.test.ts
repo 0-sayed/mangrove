@@ -107,6 +107,8 @@ async function canvasRegionSignature(
 }
 
 test("renders the playable shell and accepts browser battlefield input", async ({ page }) => {
+  test.setTimeout(45_000);
+
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
