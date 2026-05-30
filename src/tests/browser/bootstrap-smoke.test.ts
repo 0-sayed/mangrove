@@ -68,7 +68,7 @@ async function countNonBackgroundPixels(
 
 async function readBudget(budgetMeter: Locator) {
   const text = await budgetMeter.textContent();
-  const match = text?.match(/^Budget (?<budget>\d+)$/);
+  const match = text?.match(/(?<budget>\d+)/);
 
   if (!match?.groups) {
     throw new Error(`Expected a Budget meter, received ${text ?? "empty text"}.`);
@@ -133,10 +133,16 @@ test("renders the playable shell and accepts browser battlefield input", async (
   await expect
     .poll(() => countNonBackgroundPixels(battlefieldCanvas), { timeout: 5_000 })
     .toBeGreaterThan(1000);
+  await expect(page.getByRole("button", { name: "Start Opening Flow" })).toBeEnabled();
 
   const setupOverlaySignature = await canvasRegionSignature(page, battlefieldCanvas, OVERLAY_REGION);
   await page.keyboard.press("Space");
+  await expect(page.getByLabel("Run phase")).toContainText("wave");
+  await expect(page.getByLabel("Active wave")).toContainText("Opening Flow");
   await expect(page.getByLabel("Development diagnostics").getByText("phase wave")).toBeVisible();
+  await expect
+    .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
+    .toBeGreaterThan(1);
   await expect
     .poll(() => canvasRegionSignature(page, battlefieldCanvas, OVERLAY_REGION), { timeout: 5_000 })
     .not.toBe(setupOverlaySignature);
@@ -145,7 +151,7 @@ test("renders the playable shell and accepts browser battlefield input", async (
     timeout: 20_000
   });
 
-  const budgetMeter = page.getByText(/^Budget \d+$/);
+  const budgetMeter = page.getByLabel("Budget");
   const budgetBeforePlacement = await readBudget(budgetMeter);
   const boundingBox = await battlefieldCanvas.boundingBox();
   expect(boundingBox).not.toBeNull();
