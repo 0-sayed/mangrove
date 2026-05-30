@@ -24,6 +24,7 @@ const SPAWN_ASSET_REGION = {
   height: 48
 } as const;
 const MIN_CANVAS_VIEWPORT_COVERAGE = 0.72;
+const OPENING_FLOW_ADVANCE_MS = 21_000;
 
 interface Rgb {
   readonly red: number;
@@ -164,7 +165,7 @@ async function readBudget(budgetMeter: Locator) {
 }
 
 test("renders the playable shell and accepts browser battlefield input", async ({ page }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(60_000);
 
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
@@ -173,6 +174,7 @@ test("renders the playable shell and accepts browser battlefield input", async (
     }
   });
 
+  await page.clock.install();
   await page.goto("/");
   await expect(page.getByLabel("Battlefield HUD")).toBeVisible();
   await expect(page.getByText("Mangrove")).toHaveCount(0);
@@ -242,12 +244,14 @@ test("renders the playable shell and accepts browser battlefield input", async (
   await expect(page.getByLabel("Active wave")).toContainText("Opening Flow");
   await expect(page.getByText("Watch pressure")).toHaveCount(0);
   await expect(page.getByText("wave-opening-flow")).toHaveCount(0);
+
+  await page.clock.runFor(OPENING_FLOW_ADVANCE_MS);
   await expect
     .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
-    .toBeGreaterThan(1);
+    .toBeGreaterThan(200);
 
   await expect(page.getByLabel("Run phase")).toContainText("Build Phase", {
-    timeout: 30_000
+    timeout: 5_000
   });
   await expect(page.getByText("Build defenses before Flood Wave")).toHaveCount(0);
 
