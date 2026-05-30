@@ -5,7 +5,7 @@ function resolveDevPort() {
   const result = spawnSync(process.execPath, ["scripts/dev-env.mjs", "--print"], {
     encoding: "utf8"
   });
-  const match = result.stdout.match(/^MANGROVE_DEV_PORT=(?<port>\d+)$/m);
+  const match = result.stdout?.match(/^MANGROVE_DEV_PORT=(?<port>\d+)$/m);
 
   return Number(process.env["MANGROVE_DEV_PORT"] ?? match?.groups?.["port"] ?? 5177);
 }
