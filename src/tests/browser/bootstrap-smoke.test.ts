@@ -245,7 +245,7 @@ test("renders the playable shell and accepts browser battlefield input", async (
   await expect(page.getByText("Watch pressure")).toHaveCount(0);
   await expect(page.getByText("wave-opening-flow")).toHaveCount(0);
 
-  await page.clock.runFor(OPENING_FLOW_ADVANCE_MS);
+  await page.clock.fastForward(OPENING_FLOW_ADVANCE_MS);
   await expect
     .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
     .toBeGreaterThan(200);
