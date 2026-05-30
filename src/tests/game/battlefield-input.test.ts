@@ -224,9 +224,23 @@ describe("battlefield input commands", () => {
         messageFestivalV0Map,
         messageFestivalV0BuildingDefs,
         snapshotWith({ phase: "recap", activeWaveId: "wave-opening-flow" }),
-        { x: point.x + 35, y: point.y }
+        { x: point.x + 44, y: point.y }
       )
     ).toBe(undefined);
+  });
+
+  it("maps build slot clicks on the visible outline edge", () => {
+    const point = buildSlotWorldPosition(messageFestivalV0Map, "slot_queue_1");
+
+    expect(
+      buildSlotCommandForWorldPoint(
+        messageFestivalV0Level,
+        messageFestivalV0Map,
+        messageFestivalV0BuildingDefs,
+        snapshotWith({ phase: "recap", activeWaveId: "wave-opening-flow" }),
+        { x: point.x + 43, y: point.y }
+      )
+    ).toEqual({ type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" });
   });
 
   it("filters build placement by role, allowed slot, and level availability", () => {

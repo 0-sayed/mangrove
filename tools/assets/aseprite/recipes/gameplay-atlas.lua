@@ -3,8 +3,31 @@
 -- Run through Aseprite/MCP. This recipe creates a tagged animated .aseprite
 -- source file; export is handled separately so Phaser metadata stays generated.
 
-local projectRoot = os.getenv("MANGROVE_ASSET_ROOT")
-  or "/home/weights/Public/Projects/SideProjects/worktree-t002-message-festival-content"
+local function dirname(path)
+  return path:match("^(.*)[/\\][^/\\]+$")
+end
+
+local function rootFromRecipePath()
+  local source = debug.getinfo(1, "S").source
+
+  if source:sub(1, 1) ~= "@" then
+    return nil
+  end
+
+  local recipeDir = dirname(source:sub(2))
+
+  if not recipeDir then
+    return nil
+  end
+
+  return recipeDir .. "/../../../.."
+end
+
+local projectRoot = os.getenv("MANGROVE_ASSET_ROOT") or rootFromRecipePath()
+
+if not projectRoot then
+  error("Set MANGROVE_ASSET_ROOT to the Mangrove checkout before generating the gameplay atlas.")
+end
 
 local outputDir = projectRoot .. "/src/assets/generated"
 local sourcePath = outputDir .. "/gameplay-atlas.aseprite"

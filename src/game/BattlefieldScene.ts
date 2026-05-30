@@ -419,6 +419,10 @@ export class BattlefieldScene extends Phaser.Scene {
   }
 
   private packetAnimationId(message: SimSnapshot["messages"][number]): string {
+    if (message.status === "delivered") {
+      return "effect-ack-delivered";
+    }
+
     if (message.status === "queued") {
       return "packet-useful-queued";
     }

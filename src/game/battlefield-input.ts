@@ -1,7 +1,7 @@
 import type { BuildingDef, Command, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
 import { buildSlotWorldPosition, type WorldPoint } from "@game/battlefield-view";
 
-const BUILD_SLOT_HITBOX_HALF_SIZE = 34;
+const BUILD_SLOT_HITBOX_HALF_SIZE = 43;
 
 type StartWaveCommand = Extract<Command, { type: "StartWave" }>;
 type PlaceBuildingCommand = Extract<Command, { type: "PlaceBuilding" }>;
