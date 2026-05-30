@@ -57,28 +57,37 @@ export function buildSlotCommandForWorldPoint(
     return undefined;
   }
 
-  const slot = map.buildSlots.find((candidate) =>
-    isInsideBuildSlotHitbox(buildSlotWorldPosition(map, candidate.id), point)
-  );
+  const occupiedSlotIds = new Set(snapshot.buildings.map((building) => building.slotId));
+  const placedBuildingDefIds = new Set(snapshot.buildings.map((building) => building.defId));
+  const hitSlots = map.buildSlots
+    .map((slot) => {
+      const center = buildSlotWorldPosition(map, slot.id);
 
-  if (!slot || snapshot.buildings.some((building) => building.slotId === slot.id)) {
-    return undefined;
+      return { slot, center, distance: squaredDistance(center, point) };
+    })
+    .filter(({ center }) => isInsideBuildSlotHitbox(center, point))
+    .sort((left, right) => left.distance - right.distance);
+
+  for (const { slot } of hitSlots) {
+    if (occupiedSlotIds.has(slot.id)) {
+      continue;
+    }
+
+    const buildingDef = buildingDefs.find(
+      (candidate) =>
+        level.availableBuildings.includes(candidate.id) &&
+        candidate.role === slot.role &&
+        candidate.allowedSlots.includes(slot.id) &&
+        !placedBuildingDefIds.has(candidate.id) &&
+        snapshot.meters.budget >= candidate.cost
+    );
+
+    if (buildingDef) {
+      return { type: "PlaceBuilding", buildingId: buildingDef.id, slotId: slot.id };
+    }
   }
 
-  const buildingDef = buildingDefs.find(
-    (candidate) =>
-      level.availableBuildings.includes(candidate.id) &&
-      candidate.role === slot.role &&
-      candidate.allowedSlots.includes(slot.id) &&
-      !snapshot.buildings.some((building) => building.defId === candidate.id) &&
-      snapshot.meters.budget >= candidate.cost
-  );
-
-  if (!buildingDef) {
-    return undefined;
-  }
-
-  return { type: "PlaceBuilding", buildingId: buildingDef.id, slotId: slot.id };
+  return undefined;
 }
 
 export function increaseWorkerCountCommand(
@@ -117,4 +126,8 @@ function isInsideBuildSlotHitbox(center: WorldPoint, point: WorldPoint): boolean
     Math.abs(point.x - center.x) <= BUILD_SLOT_HITBOX_HALF_SIZE &&
     Math.abs(point.y - center.y) <= BUILD_SLOT_HITBOX_HALF_SIZE
   );
+}
+
+function squaredDistance(left: WorldPoint, right: WorldPoint): number {
+  return (left.x - right.x) ** 2 + (left.y - right.y) ** 2;
 }

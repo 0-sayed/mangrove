@@ -293,6 +293,29 @@ describe("battlefield input commands", () => {
     ).toBe(undefined);
   });
 
+  it("selects the nearest placeable build slot when hitboxes overlap", () => {
+    const point = buildSlotWorldPosition(multiQueueMap, "slot_custom_queue_2");
+
+    expect(
+      buildSlotCommandForWorldPoint(
+        { ...customLevel, mapId: multiQueueMap.id },
+        multiQueueMap,
+        [
+          {
+            ...customQueueHubDef,
+            allowedSlots: ["slot_custom_queue_2"]
+          }
+        ],
+        snapshotWith({ phase: "recap", activeWaveId: "wave-opening-flow" }),
+        point
+      )
+    ).toEqual({
+      type: "PlaceBuilding",
+      buildingId: "custom-queue-hub",
+      slotId: "slot_custom_queue_2"
+    });
+  });
+
   it("maps settled recap worker count increase by one", () => {
     expect(
       increaseWorkerCountCommand(

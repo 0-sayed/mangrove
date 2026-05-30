@@ -124,7 +124,11 @@ export class BattlefieldScene extends Phaser.Scene {
         })
       );
     };
-    const emitStartWaveCommand = () => {
+    const emitStartWaveCommand = (event: KeyboardEvent) => {
+      if (event.repeat) {
+        return;
+      }
+
       this.emitCommand(startNextWaveCommand(this.#level, this.#snapshot));
     };
     const emitIncreaseWorkerCountCommand = () => {
