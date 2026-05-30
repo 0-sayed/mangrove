@@ -16,7 +16,6 @@ export function App() {
     <ErrorBoundary>
       <main className="app-shell">
         <Hud
-          levelId={messageFestivalV0Level.id}
           snapshot={snapshot}
           controls={controls}
           onCommand={sendCommand}

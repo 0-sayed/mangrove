@@ -16,6 +16,11 @@ import {
   increaseWorkerCountCommand,
   startNextWaveCommand
 } from "@game/battlefield-input";
+import {
+  FIRST_PLAYABLE_ANIMATION_IDS,
+  GAMEPLAY_ATLAS,
+  animationFrameConfigs
+} from "@game/gameplay-assets";
 
 export interface BattlefieldSceneOptions {
   readonly level: LevelConfig;
@@ -26,9 +31,23 @@ export interface BattlefieldSceneOptions {
 }
 
 interface BuildingRender {
-  readonly body: Phaser.GameObjects.Rectangle;
+  readonly body: Phaser.GameObjects.Sprite;
+  readonly badge: Phaser.GameObjects.Sprite;
   readonly label: Phaser.GameObjects.Text;
+  readonly saturation: Phaser.GameObjects.Sprite;
 }
+
+const BATTLEFIELD_DEPTH = {
+  terrain: 0,
+  terrainDetail: 2,
+  path: 10,
+  buildSlot: 20,
+  building: 30,
+  packet: 40,
+  badge: 50,
+  overlay: 60,
+  label: 70
+} as const;
 
 export class BattlefieldScene extends Phaser.Scene {
   readonly #level: LevelConfig;
@@ -37,9 +56,8 @@ export class BattlefieldScene extends Phaser.Scene {
   readonly #buildingDefsById: ReadonlyMap<string, BuildingDef>;
   readonly #onCommand: ((command: Command) => void) | undefined;
   #snapshot: SimSnapshot;
-  #queueText?: Phaser.GameObjects.Text;
   readonly #buildingRenders = new Map<string, BuildingRender>();
-  readonly #packetsById = new Map<string, Phaser.GameObjects.Ellipse>();
+  readonly #packetsById = new Map<string, Phaser.GameObjects.Sprite>();
 
   public constructor(options: BattlefieldSceneOptions) {
     super("battlefield-scene");
@@ -54,19 +72,64 @@ export class BattlefieldScene extends Phaser.Scene {
     );
   }
 
+  public preload(): void {
+    this.load.atlas(GAMEPLAY_ATLAS.key, GAMEPLAY_ATLAS.imageUrl, GAMEPLAY_ATLAS.dataUrl);
+  }
+
   public create(): void {
     this.cameras.main.setBackgroundColor("#163832");
     this.cameras.main.setBounds(0, 0, BATTLEFIELD_VIEW.width, BATTLEFIELD_VIEW.height);
+    this.createAssetAnimations();
     this.drawTerrain();
     this.drawLanePaths();
     this.drawBuildSlots();
-    this.#queueText = this.add.text(32, BATTLEFIELD_VIEW.height - 34, "", {
-      color: "#f8f5ec",
-      fontFamily: "monospace",
-      fontSize: "16px"
-    });
     this.registerInputHandlers();
     this.renderSnapshot();
+  }
+
+  private createAssetAnimations(): void {
+    for (const animationId of FIRST_PLAYABLE_ANIMATION_IDS) {
+      if (this.anims.exists(animationId)) {
+        continue;
+      }
+
+      this.anims.create({
+        key: animationId,
+        frames: animationFrameConfigs(animationId),
+        frameRate: animationId.startsWith("effect-") ? 6 : 4,
+        repeat:
+          animationId === "effect-backlog-saturation" || !animationId.startsWith("effect-") ? -1 : 0
+      });
+    }
+  }
+
+  private addAssetSprite(
+    x: number,
+    y: number,
+    animationId: string,
+    scale = 1,
+    depth: number = BATTLEFIELD_DEPTH.terrain
+  ): Phaser.GameObjects.Sprite {
+    return this.add
+      .sprite(x, y, GAMEPLAY_ATLAS.key)
+      .setScale(scale)
+      .setDepth(depth)
+      .play(animationId);
+  }
+
+  private addTileGrid(
+    startX: number,
+    startY: number,
+    columns: number,
+    rows: number,
+    animationId: string,
+    depth: number = BATTLEFIELD_DEPTH.terrain
+  ): void {
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        this.addAssetSprite(startX + column * 64, startY + row * 64, animationId, 1, depth);
+      }
+    }
   }
 
   public setSnapshot(snapshot: SimSnapshot): void {
@@ -78,40 +141,92 @@ export class BattlefieldScene extends Phaser.Scene {
   }
 
   private drawTerrain(): void {
-    const graphics = this.add.graphics();
-
-    graphics.fillStyle(0x2f6f5e, 1);
-    graphics.fillRoundedRect(32, 48, 736, 352, 12);
-    graphics.fillStyle(0x21483f, 1);
-    graphics.fillRect(64, 80, 672, 288);
+    this.add
+      .rectangle(0, 0, BATTLEFIELD_VIEW.width, BATTLEFIELD_VIEW.height, 0x143d34, 1)
+      .setOrigin(0)
+      .setDepth(BATTLEFIELD_DEPTH.terrain);
+    this.addTileGrid(32, 32, 20, 12, "map-ground-grass", BATTLEFIELD_DEPTH.terrainDetail);
+    this.addTileGrid(366, 404, 8, 1, "map-ground-plaza", BATTLEFIELD_DEPTH.terrainDetail);
+    this.addTileGrid(942, 404, 2, 1, "map-ground-plaza", BATTLEFIELD_DEPTH.terrainDetail);
   }
 
   private drawLanePaths(): void {
-    const graphics = this.add.graphics();
+    const graphics = this.add.graphics().setDepth(BATTLEFIELD_DEPTH.path);
 
     for (const path of this.#map.paths) {
       const points = pathWorldPoints(this.#map, path.id);
+      const laneAnimation =
+        path.id === "path-main"
+          ? "map-lane-traffic"
+          : path.id.includes("job")
+            ? "map-lane-job"
+            : "map-lane-data";
 
-      graphics.lineStyle(32, 0x6aa36f, 1);
+      graphics.lineStyle(54, 0x335c4d, 0.84);
       this.strokePolyline(graphics, points);
-      graphics.lineStyle(14, 0xf2cc8f, 1);
-      this.strokePolyline(graphics, points);
-      graphics.fillStyle(0xf8f5ec, 1);
 
       for (const point of points) {
-        graphics.fillCircle(point.x, point.y, 5);
+        this.addAssetSprite(point.x, point.y, laneAnimation, 1, BATTLEFIELD_DEPTH.path);
       }
+    }
+
+    for (const spawn of this.#map.spawns) {
+      const position = {
+        x: BATTLEFIELD_VIEW.originX + spawn.x * BATTLEFIELD_VIEW.tileSize,
+        y: BATTLEFIELD_VIEW.originY + spawn.y * BATTLEFIELD_VIEW.tileSize
+      };
+      this.addAssetSprite(
+        position.x,
+        position.y,
+        "map-spawn-festival-gate",
+        1,
+        BATTLEFIELD_DEPTH.path
+      );
+    }
+
+    for (const exit of this.#map.exits) {
+      const position = {
+        x: BATTLEFIELD_VIEW.originX + exit.x * BATTLEFIELD_VIEW.tileSize,
+        y: BATTLEFIELD_VIEW.originY + exit.y * BATTLEFIELD_VIEW.tileSize
+      };
+      this.addAssetSprite(
+        position.x,
+        position.y,
+        "map-exit-storage-fixed",
+        1,
+        BATTLEFIELD_DEPTH.path
+      );
     }
   }
 
   private drawBuildSlots(): void {
-    const graphics = this.add.graphics();
-
-    graphics.lineStyle(2, 0xf8f5ec, 0.55);
+    const outlinePositions: { readonly x: number; readonly y: number }[] = [];
 
     for (const slot of this.#map.buildSlots) {
       const position = buildSlotWorldPosition(this.#map, slot.id);
-      graphics.strokeRoundedRect(position.x - 34, position.y - 34, 68, 68, 8);
+      const animationId =
+        slot.role === "api-gate"
+          ? "map-build-slot-ingress"
+          : slot.role === "worker-yard"
+            ? "map-build-slot-worker"
+            : "map-build-slot-queue";
+
+      this.addAssetSprite(
+        position.x,
+        position.y,
+        animationId,
+        1.1,
+        BATTLEFIELD_DEPTH.buildSlot
+      ).setAlpha(0.72);
+      outlinePositions.push(position);
+    }
+
+    const graphics = this.add.graphics().setDepth(BATTLEFIELD_DEPTH.buildSlot);
+
+    graphics.lineStyle(2, 0xf8f5ec, 0.55);
+
+    for (const position of outlinePositions) {
+      graphics.strokeRoundedRect(position.x - 43, position.y - 43, 86, 86, 8);
     }
   }
 
@@ -167,14 +282,25 @@ export class BattlefieldScene extends Phaser.Scene {
 
       const render = this.ensureBuildingRender(building);
       const state = buildingVisualState(this.#snapshot, building);
-      render.body.setStrokeStyle(3, this.strokeColorForState(state), state === "idle" ? 0.6 : 1);
-      render.body.setAlpha(state === "idle" ? 0.82 : 1);
+      const animationId = this.buildingAnimationId(building, state);
+      const isSaturated = state === "saturated";
+
+      render.body.play(animationId, true);
+      render.body.setAlpha(state === "idle" ? 0.92 : 1);
+
+      if (isSaturated && !render.saturation.visible) {
+        render.saturation.play("effect-backlog-saturation");
+      }
+
+      render.saturation.setVisible(isSaturated);
     }
 
     for (const [buildingId, render] of this.#buildingRenders) {
       if (!visibleBuildingIds.has(buildingId)) {
         render.body.destroy();
+        render.badge.destroy();
         render.label.destroy();
+        render.saturation.destroy();
         this.#buildingRenders.delete(buildingId);
       }
     }
@@ -186,13 +312,10 @@ export class BattlefieldScene extends Phaser.Scene {
 
       const position = messageWorldPosition(this.#map, message, this.#snapshot.buildings);
       const packet = this.#packetsById.get(message.id) ?? this.createPacket(message.id);
-      const isFailed = message.status === "dropped" || message.status === "expired";
 
       packet.setPosition(position.x, position.y);
-      packet.setFillStyle(
-        isFailed ? 0xd44f4f : 0xf8f5ec,
-        message.status === "delivered" ? 0.45 : 0.95
-      );
+      packet.play(this.packetAnimationId(message), true);
+      packet.setAlpha(message.status === "delivered" ? 0.45 : 1);
     }
 
     for (const [messageId, packet] of this.#packetsById) {
@@ -201,12 +324,6 @@ export class BattlefieldScene extends Phaser.Scene {
         this.#packetsById.delete(messageId);
       }
     }
-
-    this.#queueText?.setText(
-      `Wave ${this.#snapshot.activeWaveId ?? "setup"} | Queue ${String(queueFillCount(this.#snapshot))} | Backlog ${String(
-        this.#snapshot.meters.backlog
-      )}`
-    );
   }
 
   private ensureBuildingRender(building: SimSnapshot["buildings"][number]): BuildingRender {
@@ -218,28 +335,111 @@ export class BattlefieldScene extends Phaser.Scene {
 
     const position = buildSlotWorldPosition(this.#map, building.slotId);
     const def = this.#buildingDefsById.get(building.defId);
-    const body = this.add.rectangle(
-      position.x,
-      position.y,
-      72,
-      56,
-      this.buildingFillColor(def?.role),
-      1
-    );
+    const body = this.add
+      .sprite(position.x, position.y, GAMEPLAY_ATLAS.key)
+      .setScale(1.32)
+      .setDepth(BATTLEFIELD_DEPTH.building);
+    const badge = this.add
+      .sprite(position.x + 34, position.y - 32, GAMEPLAY_ATLAS.key)
+      .setScale(0.52)
+      .setDepth(BATTLEFIELD_DEPTH.badge);
+    const saturation = this.add
+      .sprite(position.x, position.y - 44, GAMEPLAY_ATLAS.key)
+      .setScale(0.72)
+      .setDepth(BATTLEFIELD_DEPTH.overlay)
+      .setVisible(false);
     const label = this.add
-      .text(position.x, position.y, this.buildingBadge(def, building.defId), {
+      .text(position.x, position.y + 50, this.buildingBadge(def, building.defId), {
+        backgroundColor: "rgba(17, 23, 33, 0.72)",
         color: "#f8f5ec",
         fontFamily: "monospace",
-        fontSize: "12px"
+        fontSize: "14px",
+        padding: { x: 6, y: 3 }
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(BATTLEFIELD_DEPTH.label);
 
-    body.setStrokeStyle(3, 0xf8f5ec, 0.65);
+    badge.play(this.badgeAnimationId(def));
 
-    const render = { body, label };
+    const render = { body, badge, label, saturation };
     this.#buildingRenders.set(building.id, render);
 
     return render;
+  }
+
+  private buildingAnimationId(
+    building: SimSnapshot["buildings"][number],
+    state: ReturnType<typeof buildingVisualState>
+  ): string {
+    const role = this.#buildingDefsById.get(building.defId)?.role;
+
+    if (role === "api-gate") {
+      return state === "saturated"
+        ? "building-api-gate-saturated"
+        : state === "processing"
+          ? "building-api-gate-dropping"
+          : "building-api-gate-flowing";
+    }
+
+    if (role === "worker-yard") {
+      return state === "saturated"
+        ? "building-worker-yard-saturated"
+        : state === "processing"
+          ? "building-worker-yard-working"
+          : "building-worker-yard-idle";
+    }
+
+    if (state === "saturated") {
+      return "building-queue-hub-overflowing";
+    }
+
+    if (state === "filling") {
+      return queueFillCount(this.#snapshot) > 2
+        ? "building-queue-hub-backing-up"
+        : "building-queue-hub-filling";
+    }
+
+    return "building-queue-hub-empty";
+  }
+
+  private badgeAnimationId(def: BuildingDef | undefined): string {
+    if (def?.role === "api-gate") {
+      return "badge-api";
+    }
+
+    if (def?.role === "worker-yard") {
+      return "badge-worker";
+    }
+
+    if (def?.role === "queue-hub") {
+      return "badge-queue";
+    }
+
+    return "badge-storage-exit";
+  }
+
+  private packetAnimationId(message: SimSnapshot["messages"][number]): string {
+    if (message.status === "queued") {
+      return "packet-useful-queued";
+    }
+
+    if (message.status === "processing") {
+      return "packet-useful-processing";
+    }
+
+    if (message.status === "dropped") {
+      return "effect-drop";
+    }
+
+    if (message.status === "expired") {
+      return "effect-timeout-expired";
+    }
+
+    if (message.ageTicks >= 90) {
+      return "packet-expiring";
+    }
+
+    return "packet-useful";
   }
 
   private strokePolyline(
@@ -256,25 +456,15 @@ export class BattlefieldScene extends Phaser.Scene {
     }
   }
 
-  private createPacket(messageId: string): Phaser.GameObjects.Ellipse {
-    const packet = this.add.ellipse(0, 0, 18, 12, 0xf8f5ec, 0.95);
+  private createPacket(messageId: string): Phaser.GameObjects.Sprite {
+    const packet = this.add
+      .sprite(0, 0, GAMEPLAY_ATLAS.key)
+      .setScale(0.78)
+      .setDepth(BATTLEFIELD_DEPTH.packet);
 
-    packet.setStrokeStyle(2, 0x163832, 0.75);
     this.#packetsById.set(messageId, packet);
 
     return packet;
-  }
-
-  private buildingFillColor(role: BuildingDef["role"] | undefined): number {
-    if (role === "api-gate") {
-      return 0x4f86c6;
-    }
-
-    if (role === "worker-yard") {
-      return 0xd9822b;
-    }
-
-    return 0x5f7f5f;
   }
 
   private buildingBadge(def: BuildingDef | undefined, fallback: string): string {
@@ -291,21 +481,5 @@ export class BattlefieldScene extends Phaser.Scene {
     }
 
     return fallback.toUpperCase();
-  }
-
-  private strokeColorForState(state: ReturnType<typeof buildingVisualState>): number {
-    if (state === "saturated") {
-      return 0xd44f4f;
-    }
-
-    if (state === "processing") {
-      return 0xffc857;
-    }
-
-    if (state === "accepting" || state === "filling") {
-      return 0x9be58f;
-    }
-
-    return 0xf8f5ec;
   }
 }

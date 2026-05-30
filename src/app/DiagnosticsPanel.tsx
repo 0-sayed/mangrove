@@ -5,7 +5,7 @@ interface DiagnosticsPanelProps {
 }
 
 export function DiagnosticsPanel({ snapshot }: DiagnosticsPanelProps) {
-  if (import.meta.env.VITE_MANGROVE_SHOW_DIAGNOSTICS !== "true" && !import.meta.env.DEV) {
+  if (import.meta.env.VITE_MANGROVE_SHOW_DIAGNOSTICS !== "true") {
     return null;
   }
 
