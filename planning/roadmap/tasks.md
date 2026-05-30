@@ -1,97 +1,93 @@
 # Production Town Roadmap Tasks
 
-This file is the agent-pickable roadmap after bootstrap.
-
-Start these tasks only after `bootstrap.md` has created the runnable React + Vite + Phaser + TypeScript project shape, test setup, and source folders. Bootstrap owns generic repo/app setup. This file owns game behavior.
+This file is the agent-pickable roadmap after bootstrap. Bootstrap owns generic repo/app setup. This file owns game behavior.
 
 ## Roadmap Rules
 
-- Pick the lowest unblocked task.
+- Pick the lowest unblocked active task.
 - Tasks in the same execution wave have no dependencies on each other and may be planned or implemented in parallel.
 - Do not implement deferred features early.
 - Keep simulator truth separate from React and Phaser.
-- Every gameplay mechanic must produce visible feedback and have a real backend concept shadow.
+- Every mechanic must create visible gameplay feedback and have a real software concept shadow.
 - Learning text appears after play, not before it.
 
-## First Playable Target
+## Course Correction
 
-Build a 2-3 minute local browser game slice:
+T001-T013 produced useful prototype infrastructure, but the active game direction is now real tower defense:
 
-- One authored Message Festival map.
-- Two waves: Opening Flow and Flood Wave.
-- API Gate and Worker Yard preplaced.
-- Queue Hub placeable after Wave 1.
-- One tuning command: `SetWorkerCount` from 1 to 2.
-- Three meters: Trust, Budget, Backlog.
+- Enemies move along roads toward a protected Service Core.
+- The player builds towers on pads.
+- Towers attack, stall, route, filter, reveal, or support.
+- Leaks damage Town Health.
+- Resolved enemies award Build Budget.
+- Waves escalate through enemy composition and route pressure.
+- Backend concepts appear as mechanic shadows and recaps, not as the literal board path.
+
+Do not continue extending `API -> Queue -> Worker -> Storage` as the core loop.
+
+## Historical / Transitional Prototype Tasks
+
+These tasks remain historical context and should not be used as the future design center.
+
+| Task                                                         | Status      | Note                                      |
+| ------------------------------------------------------------ | ----------- | ----------------------------------------- |
+| `T001` - Define first playable content schemas               | Done        | Prototype content schemas                 |
+| `T002` - Author Message Festival v0 content                  | Done        | Prototype level content                   |
+| `T003` - Create deterministic simulator core                 | Done        | Keep deterministic boundary               |
+| `T004` - Implement message lifecycle                         | Done        | Prototype lifecycle, not future core      |
+| `T005` - Implement first playable commands                   | Done        | Command pattern remains useful            |
+| `T006` - Add Wave 1 Opening Flow                             | Done        | Prototype wave                            |
+| `T007` - Add Wave 2 Flood Wave                               | Done        | Merged to `main`; prototype pressure test |
+| `T008` - Add simulator replay and boundary tests             | Superseded  | Replace with TD replay tests              |
+| `T009` - Create Phaser battlefield scene                     | Done        | Renderer foundation remains useful        |
+| `T010` - Connect Phaser input to simulator commands          | Done        | Input bridge remains useful               |
+| `T011` - Build React HUD and run controls                    | Done        | HUD foundation remains useful             |
+| `T012` - Add first playable wave recap                       | Superseded  | Replace with TD post-wave recap           |
+| `T013` - Wire custom Aseprite assets and readable overlays   | Here we changed the course of our game | Keep as prototype asset/render evidence   |
+
+## Active TD Roadmap
+
+Build one short local browser tower-defense level with three readable waves. The player should:
+
+- Read the next wave preview.
+- Build a Worker Tower on a fixed pad.
+- Watch enemies move down the road toward the Service Core.
+- Add Queue Snare when swarm pressure appears.
+- Use Load Balancer Gate when route pressure splits.
+- Survive the wave set and see a concise recap.
+
+- One authored map with a road, build pads, fork, Incident Portal, and Service Core.
+- Three waves: Normal Flow, Burst Surge, Hot Shard.
+- Three towers: Worker Tower, Queue Snare, Load Balancer Gate.
+- Three enemies: Request Runner, Burst Swarm, Heavy Payload.
+- Three meters: Town Health, Build Budget, Pressure.
 - Deterministic simulator with replay/hash tests.
-- Phaser renders the battlefield.
-- React renders HUD, build/tuning controls, and wave recap.
-- Starter assets plus small readable overlays prove the visual language.
+- Phaser renders roads, towers, enemies, projectiles, hits, leaks, and range previews.
+- Component connections are visible through coverage overlap, stall windows, route influence, support radius, and weak-coverage warnings.
+- React renders HUD, build controls, wave preview, hover tooltips, and recap.
+- Custom Aseprite-generated assets support tower-defense readability.
 
 ## Task Graph
 
-| Task                                                    | Depends On             | Context                                                          |
-| ------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------- |
-| [x] `T001` - Define first playable content schemas      | bootstrap complete     | `planning/context/game-design.md`, `planning/context/stack.md`   |
-| [x] `T002` - Author Message Festival v0 content         | `T001`                 | `planning/context/game-design.md`                                |
-| [x] `T003` - Create deterministic simulator core        | `T001`                 | `planning/context/stack.md`                                      |
-| [x] `T004` - Implement message lifecycle                | `T002`, `T003`         | `planning/context/game-design.md`                                |
-| [x] `T005` - Implement first playable commands          | `T004`                 | `planning/context/game-design.md`, `planning/context/stack.md`   |
-| [x] `T006` - Add Wave 1 Opening Flow                    | `T004`, `T005`         | `planning/context/game-design.md`                                |
-| [ ] `T007` - Add Wave 2 Flood Wave                      | `T006`                 | `planning/context/game-design.md`                                |
-| [ ] `T008` - Add simulator replay and boundary tests    | `T007`                 | `planning/context/stack.md`                                      |
-| [x] `T009` - Create Phaser battlefield scene            | `T002`, `T004`         | `planning/context/stack.md`                                      |
-| [x] `T010` - Connect Phaser input to simulator commands | `T005`, `T009`         | `planning/context/stack.md`                                      |
-| [x] `T011` - Build React HUD and run controls           | `T005`                 | `planning/context/game-design.md`, `planning/context/stack.md`   |
-| [ ] `T012` - Add first playable wave recap              | `T007`, `T011`         | `planning/context/game-design.md`                                |
-| [ ] `T013` - Wire starter assets and readable overlays  | `T009`, `T011`         | `planning/context/art-direction.md`, `planning/context/stack.md` |
-| [ ] `T014` - Browser smoke test the first playable      | `T008`, `T012`, `T013` | `planning/context/game-design.md`, `planning/context/stack.md`   |
-| [ ] `T015` - Tune first playable balance                | `T014`                 | `planning/context/game-design.md`                                |
-| [ ] `T016` - First playable review gate                 | `T015`                 | `planning/context/game-design.md`                                |
-| [ ] `T017` - Decide custom asset pipeline               | `T016`                 | `planning/context/art-direction.md`, `planning/context/stack.md` |
-| [ ] `T018` - Add DB Vault as placeable storage          | `T016`                 | `planning/context/game-design.md`                                |
-| [ ] `T019` - Add Validation Gate and Noise Swarm        | `T018`                 | `planning/context/game-design.md`                                |
-| [ ] `T020` - Add Replay Phantom retry pressure          | `T019`                 | `planning/context/game-design.md`                                |
-| [ ] `T021` - Add Poison Packet Boss                     | `T020`                 | `planning/context/game-design.md`                                |
-| [ ] `T022` - Add Compute meter                          | `T021`                 | `planning/context/game-design.md`                                |
-| [ ] `T023` - Add post-run learning memory               | `T021`                 | `planning/context/game-design.md`                                |
-| [ ] `T024` - Add second-surface transfer scenario       | `T023`                 | `planning/context/game-design.md`                                |
+| Task                                                            | Depends On        | Contract                                |
+| --------------------------------------------------------------- | ----------------- | --------------------------------------- |
+| [ ] `TD001` - Define TD content and runtime contracts           | course correction | `planning/context/td-task-contracts.md` |
+| [ ] `TD002` - Implement enemy travel, waves, leaks, and economy | `TD001`           | `planning/context/td-task-contracts.md` |
+| [ ] `TD003` - Implement tower combat, stall, and routing        | `TD002`           | `planning/context/td-task-contracts.md` |
+| [ ] `TD004` - Author first TD level content                     | `TD001`           | `planning/context/td-task-contracts.md` |
+| [ ] `TD005` - Render TD combat readability in Phaser            | `TD003`, `TD004`  | `planning/context/td-task-contracts.md` |
+| [ ] `TD006` - Build TD HUD, build controls, and tooltips        | `TD005`           | `planning/context/td-task-contracts.md` |
+| [ ] `TD007` - Add TD recap, balance, and browser smoke          | `TD006`           | `planning/context/td-task-contracts.md` |
 
 ## Execution Waves
 
-Each wave is the earliest parallel stage for those tasks. Tasks in the same wave have no dependencies on each other. Create each task branch from updated `main` after the previous wave lands; same-wave branches should be siblings, not branches of each other.
+Create each branch from updated `main` after the previous wave lands. Same-wave branches should be siblings, not branches of each other.
 
-| Wave | Done | Parallel Tasks         | Branches                                                                  |
-| ---- | ---- | ---------------------- | ------------------------------------------------------------------------- |
-| 1    | [x]  | `T001`                 | `feat/t001-content-schemas`                                               |
-| 2    | [x]  | `T002`, `T003`         | `feat/t002-message-festival-content`, `feat/t003-sim-core`                |
-| 3    | [x]  | `T004`                 | `feat/t004-message-lifecycle`                                             |
-| 4    | [x]  | `T005`, `T009`         | `feat/t005-playable-commands`, `feat/t009-phaser-battlefield`             |
-| 5    | [ ]  | `T006`, `T010`, `T011` | `feat/t006-opening-flow`, `feat/t010-phaser-input`, `feat/t011-react-hud` |
-| 6    | [ ]  | `T007`, `T013`         | `feat/t007-flood-wave`, `feat/t013-starter-assets-overlays`               |
-| 7    | [ ]  | `T008`, `T012`         | `feat/t008-replay-boundary-tests`, `feat/t012-wave-recap`                 |
-| 8    | [ ]  | `T014`                 | `feat/t014-browser-smoke-first-playable`                                  |
-| 9    | [ ]  | `T015`                 | `feat/t015-balance-first-playable`                                        |
-| 10   | [ ]  | `T016`                 | `feat/t016-first-playable-review`                                         |
-| 11   | [ ]  | `T017`, `T018`         | `feat/t017-asset-pipeline`, `feat/t018-db-vault`                          |
-| 12   | [ ]  | `T019`                 | `feat/t019-validation-gate-noise-swarm`                                   |
-| 13   | [ ]  | `T020`                 | `feat/t020-replay-phantom`                                                |
-| 14   | [ ]  | `T021`                 | `feat/t021-poison-packet-boss`                                            |
-| 15   | [ ]  | `T022`, `T023`         | `feat/t022-compute-meter`, `feat/t023-learning-memory`                    |
-| 16   | [ ]  | `T024`                 | `feat/t024-second-surface-transfer`                                       |
-
-## Explicitly Deferred
-
-- Multiplayer.
-- Async raids.
-- Accounts.
-- Real backend.
-- Tiled map authoring.
-- Procedural maps.
-- Freeform path editing.
-- Campaign.
-- User-generated levels.
-- Full replay browser.
-- Large browser test suite.
-- High-polish art pass before the loop is proven.
-- Aseprite or MCP asset automation before the first playable is proven.
+| Wave | Parallel Tasks     | Branches                                                                  |
+| ---- | ------------------ | ------------------------------------------------------------------------- |
+| 1    | `TD001`            | `feat/td001-contracts`                                                    |
+| 2    | `TD002`, `TD004`   | `feat/td002-travel-leaks-economy`, `feat/td004-first-level-content`       |
+| 3    | `TD003`            | `feat/td003-tower-combat-routing`                                         |
+| 4    | `TD005`            | `feat/td005-phaser-combat-readability`                                    |
+| 5    | `TD006`            | `feat/td006-hud-build-controls`                                           |
+| 6    | `TD007`            | `feat/td007-recap-balance-smoke`                                          |
