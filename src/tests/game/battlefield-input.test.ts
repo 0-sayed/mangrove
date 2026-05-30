@@ -107,6 +107,21 @@ describe("battlefield input commands", () => {
     ).toEqual({ type: "StartWave", waveId: "wave-flood" });
   });
 
+  it("does not start the next wave while recap messages remain active", () => {
+    expect(
+      startNextWaveCommand(
+        messageFestivalV0Level,
+        snapshotWith({
+          phase: "recap",
+          activeWaveId: "wave-opening-flow",
+          messages: [
+            { id: "message-1", type: "useful", status: "queued", pathId: "path-main", ageTicks: 0 }
+          ]
+        })
+      )
+    ).toBe(undefined);
+  });
+
   it("does not start a recap wave without a valid active wave context", () => {
     expect(
       startNextWaveCommand(messageFestivalV0Level, snapshotWith({ phase: "recap" }))

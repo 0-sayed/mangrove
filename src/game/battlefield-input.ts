@@ -27,6 +27,10 @@ export function startNextWaveCommand(
     return undefined;
   }
 
+  if (snapshot.messages.some((message) => ACTIVE_MESSAGE_STATUSES.has(message.status))) {
+    return undefined;
+  }
+
   const activeWaveIndex = level.waves.findIndex((wave) => wave.id === snapshot.activeWaveId);
 
   if (activeWaveIndex < 0) {
