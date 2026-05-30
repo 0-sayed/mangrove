@@ -63,6 +63,23 @@ function countDropEvents(state: GameState, reason: "direct-handoff-overflow" | "
 }
 
 describe("Wave 2 Flood Wave", () => {
+  it("does not start flood wave before opening flow is complete", () => {
+    const initial = createPlayableGame();
+    const attempted = step(initial, [{ type: "StartWave", waveId: FLOOD_WAVE_ID }]);
+    const snapshot = toSnapshot(attempted);
+
+    expect(snapshot).toMatchObject({
+      phase: "setup"
+    });
+    expect(snapshot.activeWaveId).toBeUndefined();
+    expect(attempted.completedWaveIds).toEqual([]);
+    expect(attempted.eventLog.events).not.toContainEqual({
+      tick: initial.tick,
+      type: "wave.started",
+      waveId: FLOOD_WAVE_ID
+    });
+  });
+
   it("punishes direct handoff only with visible drops and a failed trust outcome", () => {
     const { state, backlogPeak } = runFloodWave([]);
     const snapshot = toSnapshot(state);

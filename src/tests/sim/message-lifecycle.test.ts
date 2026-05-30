@@ -487,8 +487,22 @@ describe("message lifecycle", () => {
     );
 
     const timedOut = runTicks(started, 2);
+    const drained = runTicks(timedOut, 20);
 
-    expect(toSnapshot(timedOut).phase).toBe("complete");
+    expect(toSnapshot(timedOut)).toMatchObject({
+      phase: "recap",
+      activeWaveId: "wave-burst",
+      meters: {
+        backlog: 1
+      }
+    });
+    expect(toSnapshot(drained)).toMatchObject({
+      phase: "complete",
+      activeWaveId: "wave-burst",
+      meters: {
+        backlog: 0
+      }
+    });
     expect(timedOut.eventLog.events).toContainEqual({
       tick: 2,
       type: "wave.ended",
