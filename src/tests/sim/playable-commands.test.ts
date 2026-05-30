@@ -122,8 +122,9 @@ describe("first playable commands", () => {
 
   it("keeps worker tuning blocked while timed-out recap messages are active", () => {
     const openingWave = messageFestivalV0Level.waves[0];
-    if (!openingWave) {
-      throw new Error("message festival level must author an opening wave");
+    const followupWave = messageFestivalV0Level.waves[1];
+    if (!openingWave || !followupWave) {
+      throw new Error("message festival level must author at least two waves");
     }
 
     const timeoutLevel: LevelConfig = {
@@ -134,7 +135,8 @@ describe("first playable commands", () => {
           durationTicks: 1,
           timeoutTicks: 1,
           spawnSchedule: [{ tick: 0, messageType: "useful", count: 1 }]
-        }
+        },
+        followupWave
       ]
     };
     const slowWorkerDefs = messageFestivalV0BuildingDefs.map((building) =>

@@ -90,6 +90,45 @@ describe("Message Festival v0 content", () => {
     });
   });
 
+  it("authors Wave 2 Flood Wave as burst pressure", () => {
+    const floodWave = messageFestivalV0Level.waves.find((wave) => wave.id === "wave-flood");
+    const floodRecap = messageFestivalV0Level.recaps.find((recap) => recap.id === "recap-flood");
+
+    expect(floodWave).toEqual({
+      id: "wave-flood",
+      durationTicks: 160,
+      timeoutTicks: 700,
+      spawnSchedule: [
+        { tick: 0, messageType: "useful", count: 3 },
+        { tick: 10, messageType: "useful", count: 3 },
+        { tick: 20, messageType: "useful", count: 3 },
+        { tick: 30, messageType: "useful", count: 3 },
+        { tick: 40, messageType: "useful", count: 3 },
+        { tick: 50, messageType: "useful", count: 3 },
+        { tick: 60, messageType: "useful", count: 3 },
+        { tick: 70, messageType: "useful", count: 3 },
+        { tick: 80, messageType: "useful", count: 3 },
+        { tick: 90, messageType: "useful", count: 3 },
+        { tick: 100, messageType: "useful", count: 3 },
+        { tick: 110, messageType: "useful", count: 3 },
+        { tick: 120, messageType: "useful", count: 3 },
+        { tick: 130, messageType: "useful", count: 3 },
+        { tick: 140, messageType: "useful", count: 3 },
+        { tick: 150, messageType: "useful", count: 3 }
+      ],
+      messageTypes: ["useful"],
+      recapId: "recap-flood"
+    });
+    expect(floodRecap).toEqual({
+      id: "recap-flood",
+      lines: [
+        "Queue Hub absorbs bursts before workers are ready.",
+        "Backlog still peaks when workers process too slowly.",
+        "Queue: absorbs bursts, but does not create worker capacity."
+      ]
+    });
+  });
+
   it("unlocks Queue Hub placement and worker tuning after Wave 1", () => {
     expect(messageFestivalV0Level.unlocks).toEqual([
       {

@@ -162,7 +162,7 @@ export function createGame(
     alerts: [],
     completedWaveIds: [],
     commandHistory: [],
-    eventLog: createEventLog(20)
+    eventLog: createEventLog(200)
   };
 }
 
@@ -310,9 +310,11 @@ function applyCommand(state: GameState, command: Command): GameState {
   }
 
   const wave = state.config.waves.find((candidate) => candidate.id === command.waveId);
+  const nextWave = nextIncompleteWave(state);
 
   if (
     !wave ||
+    nextWave?.id !== wave.id ||
     (state.phase !== "setup" && state.phase !== "recap") ||
     (state.phase === "recap" && state.messages.some(isActiveMessage))
   ) {
@@ -377,6 +379,23 @@ function isBuildingUnlocked(state: GameState, buildingId: string): boolean {
 
 function activeWave(state: GameState): WaveDef | undefined {
   return state.config.waves.find((wave) => wave.id === state.activeWaveId);
+}
+
+function nextIncompleteWave(state: GameState): WaveDef | undefined {
+  return state.config.waves.find((wave) => !state.completedWaveIds.includes(wave.id));
+}
+
+function isFinalWave(state: GameState, waveId: string): boolean {
+  const finalWave = state.config.waves.at(-1);
+
+  return finalWave?.id === waveId;
+}
+
+function hasCompletedAllWaves(
+  state: GameState,
+  completedWaveIds: readonly string[] = state.completedWaveIds
+): boolean {
+  return state.config.waves.every((wave) => completedWaveIds.includes(wave.id));
 }
 
 function waveElapsedTick(state: GameState): number | undefined {
@@ -734,10 +753,12 @@ function maybeEndWave(state: GameState): GameState {
   const completedWaveIds = state.completedWaveIds.includes(wave.id)
     ? state.completedWaveIds
     : [...state.completedWaveIds, wave.id];
+  const runComplete =
+    isFinalWave(state, wave.id) && hasCompletedAllWaves(state, completedWaveIds) && activeBacklogResolved;
 
   return {
     ...state,
-    phase: "recap",
+    phase: runComplete ? "complete" : "recap",
     completedWaveIds,
     eventLog: pushEvent(state.eventLog, {
       tick: state.tick,
@@ -745,6 +766,20 @@ function maybeEndWave(state: GameState): GameState {
       waveId: wave.id
     })
   };
+}
+
+function maybeCompleteFinalRecap(state: GameState): GameState {
+  if (
+    state.phase !== "recap" ||
+    !state.activeWaveId ||
+    !isFinalWave(state, state.activeWaveId) ||
+    !hasCompletedAllWaves(state) ||
+    state.messages.some(isActiveMessage)
+  ) {
+    return state;
+  }
+
+  return { ...state, phase: "complete" };
 }
 
 export function step(state: GameState, commandsForTick: readonly Command[]): GameState {
@@ -789,6 +824,7 @@ export function step(state: GameState, commandsForTick: readonly Command[]): Gam
     lifecycleState = startWorkers(lifecycleState);
     lifecycleState = recalculateBacklog(lifecycleState);
   }
+  lifecycleState = maybeCompleteFinalRecap(lifecycleState);
 
   return {
     ...lifecycleState,
