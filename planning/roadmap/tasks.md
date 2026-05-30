@@ -41,7 +41,7 @@ Build a 2-3 minute local browser game slice:
 | [ ] `T007` - Add Wave 2 Flood Wave                      | `T006`                 | `planning/context/game-design.md`                                |
 | [ ] `T008` - Add simulator replay and boundary tests    | `T007`                 | `planning/context/stack.md`                                      |
 | [x] `T009` - Create Phaser battlefield scene            | `T002`, `T004`         | `planning/context/stack.md`                                      |
-| [ ] `T010` - Connect Phaser input to simulator commands | `T005`, `T009`         | `planning/context/stack.md`                                      |
+| [x] `T010` - Connect Phaser input to simulator commands | `T005`, `T009`         | `planning/context/stack.md`                                      |
 | [x] `T011` - Build React HUD and run controls           | `T005`                 | `planning/context/game-design.md`, `planning/context/stack.md`   |
 | [ ] `T012` - Add first playable wave recap              | `T007`, `T011`         | `planning/context/game-design.md`                                |
 | [ ] `T013` - Wire starter assets and readable overlays  | `T009`, `T011`         | `planning/context/art-direction.md`, `planning/context/stack.md` |

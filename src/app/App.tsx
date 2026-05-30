@@ -26,6 +26,7 @@ export function App() {
           map={messageFestivalV0Map}
           buildingDefs={messageFestivalV0BuildingDefs}
           snapshot={snapshot}
+          onCommand={sendCommand}
         />
         <DiagnosticsPanel snapshot={snapshot} />
       </main>

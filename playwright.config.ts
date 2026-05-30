@@ -2,8 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 
 function resolveDevPort() {
-  if (process.env["MANGROVE_DEV_PORT"]) {
-    return Number(process.env["MANGROVE_DEV_PORT"]);
+  const envPort = process.env["MANGROVE_DEV_PORT"];
+  if (envPort) {
+    return Number(envPort);
   }
 
   const result = spawnSync(process.execPath, ["scripts/dev-env.mjs", "--print"], {
