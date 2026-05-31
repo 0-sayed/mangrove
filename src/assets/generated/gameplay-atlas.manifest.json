@@ -1,0 +1,540 @@
+{
+  "schema": "mangrove.asepriteAssetManifest.v1",
+  "recipe": "tools/assets/aseprite/recipes/gameplay-atlas.lua",
+  "source": "src/assets/generated/gameplay-atlas.aseprite",
+  "sheet": "src/assets/generated/gameplay-atlas.png",
+  "data": "src/assets/generated/gameplay-atlas.json",
+  "frameSize": { "w": 64, "h": 64 },
+  "frameDurationMs": 110,
+  "animations": [
+    { "id": "map-ground-grass", "category": "map", "from": 1, "to": 2, "frames": 2 },
+    { "id": "map-ground-plaza", "category": "map", "from": 3, "to": 4, "frames": 2 },
+    { "id": "map-lane-traffic", "category": "map", "from": 5, "to": 7, "frames": 3 },
+    { "id": "map-lane-job", "category": "map", "from": 8, "to": 10, "frames": 3 },
+    { "id": "map-lane-data", "category": "map", "from": 11, "to": 13, "frames": 3 },
+    { "id": "map-spawn-festival-gate", "category": "map", "from": 14, "to": 17, "frames": 4 },
+    { "id": "map-exit-storage-fixed", "category": "map", "from": 18, "to": 21, "frames": 4 },
+    { "id": "map-build-slot-ingress", "category": "map", "from": 22, "to": 24, "frames": 3 },
+    { "id": "map-build-slot-worker", "category": "map", "from": 25, "to": 27, "frames": 3 },
+    { "id": "map-build-slot-queue", "category": "map", "from": 28, "to": 30, "frames": 3 },
+    { "id": "map-placement-preview-valid", "category": "map", "from": 31, "to": 33, "frames": 3 },
+    { "id": "map-placement-preview-invalid", "category": "map", "from": 34, "to": 36, "frames": 3 },
+    {
+      "id": "building-api-gate-flowing",
+      "category": "building",
+      "from": 37,
+      "to": 40,
+      "frames": 4
+    },
+    {
+      "id": "building-api-gate-saturated",
+      "category": "building",
+      "from": 41,
+      "to": 44,
+      "frames": 4
+    },
+    {
+      "id": "building-api-gate-dropping",
+      "category": "building",
+      "from": 45,
+      "to": 48,
+      "frames": 4
+    },
+    {
+      "id": "building-worker-yard-idle",
+      "category": "building",
+      "from": 49,
+      "to": 51,
+      "frames": 3
+    },
+    {
+      "id": "building-worker-yard-working",
+      "category": "building",
+      "from": 52,
+      "to": 55,
+      "frames": 4
+    },
+    {
+      "id": "building-worker-yard-saturated",
+      "category": "building",
+      "from": 56,
+      "to": 59,
+      "frames": 4
+    },
+    { "id": "building-queue-hub-empty", "category": "building", "from": 60, "to": 62, "frames": 3 },
+    {
+      "id": "building-queue-hub-filling",
+      "category": "building",
+      "from": 63,
+      "to": 66,
+      "frames": 4
+    },
+    {
+      "id": "building-queue-hub-backing-up",
+      "category": "building",
+      "from": 67,
+      "to": 70,
+      "frames": 4
+    },
+    {
+      "id": "building-queue-hub-overflowing",
+      "category": "building",
+      "from": 71,
+      "to": 74,
+      "frames": 4
+    },
+    { "id": "packet-useful", "category": "packet", "from": 75, "to": 78, "frames": 4 },
+    { "id": "packet-useful-queued", "category": "packet", "from": 79, "to": 81, "frames": 3 },
+    { "id": "packet-useful-processing", "category": "packet", "from": 82, "to": 85, "frames": 4 },
+    { "id": "packet-flood", "category": "packet", "from": 86, "to": 89, "frames": 4 },
+    { "id": "packet-expiring", "category": "packet", "from": 90, "to": 92, "frames": 3 },
+    { "id": "effect-message-spawn", "category": "effect", "from": 93, "to": 96, "frames": 4 },
+    { "id": "effect-message-accepted", "category": "effect", "from": 97, "to": 100, "frames": 4 },
+    { "id": "effect-message-queued", "category": "effect", "from": 101, "to": 104, "frames": 4 },
+    { "id": "effect-worker-start", "category": "effect", "from": 105, "to": 108, "frames": 4 },
+    { "id": "effect-ack-delivered", "category": "effect", "from": 109, "to": 114, "frames": 6 },
+    { "id": "effect-drop", "category": "effect", "from": 115, "to": 120, "frames": 6 },
+    { "id": "effect-timeout-expired", "category": "effect", "from": 121, "to": 126, "frames": 6 },
+    { "id": "effect-overflow", "category": "effect", "from": 127, "to": 132, "frames": 6 },
+    {
+      "id": "effect-backlog-saturation",
+      "category": "effect",
+      "from": 133,
+      "to": 136,
+      "frames": 4
+    },
+    { "id": "effect-trust-loss", "category": "effect", "from": 137, "to": 140, "frames": 4 },
+    { "id": "effect-budget-gain", "category": "effect", "from": 141, "to": 144, "frames": 4 },
+    { "id": "effect-wave-start", "category": "effect", "from": 145, "to": 150, "frames": 6 },
+    { "id": "effect-wave-end", "category": "effect", "from": 151, "to": 156, "frames": 6 },
+    { "id": "badge-api", "category": "badge", "from": 157, "to": 158, "frames": 2 },
+    { "id": "badge-queue", "category": "badge", "from": 159, "to": 161, "frames": 3 },
+    { "id": "badge-worker", "category": "badge", "from": 162, "to": 164, "frames": 3 },
+    { "id": "badge-storage-exit", "category": "badge", "from": 165, "to": 167, "frames": 3 },
+    { "id": "ui-frame-hud", "category": "ui", "from": 168, "to": 169, "frames": 2 },
+    { "id": "ui-icon-trust", "category": "ui", "from": 170, "to": 172, "frames": 3 },
+    { "id": "ui-icon-budget", "category": "ui", "from": 173, "to": 175, "frames": 3 },
+    { "id": "ui-icon-backlog", "category": "ui", "from": 176, "to": 178, "frames": 3 },
+    { "id": "ui-meter-trust", "category": "ui", "from": 179, "to": 181, "frames": 3 },
+    { "id": "ui-meter-budget", "category": "ui", "from": 182, "to": 184, "frames": 3 },
+    { "id": "ui-meter-backlog", "category": "ui", "from": 185, "to": 187, "frames": 3 },
+    { "id": "ui-button-start-wave", "category": "ui", "from": 188, "to": 190, "frames": 3 },
+    { "id": "ui-button-build-queue", "category": "ui", "from": 191, "to": 193, "frames": 3 },
+    { "id": "ui-control-worker-count", "category": "ui", "from": 194, "to": 196, "frames": 3 },
+    { "id": "ui-recap-delivered", "category": "ui", "from": 197, "to": 199, "frames": 3 },
+    { "id": "ui-recap-dropped", "category": "ui", "from": 200, "to": 202, "frames": 3 },
+    { "id": "ui-recap-backlog-peak", "category": "ui", "from": 203, "to": 205, "frames": 3 },
+    {
+      "id": "building-validation-gate-passing",
+      "category": "building",
+      "from": 206,
+      "to": 209,
+      "frames": 4
+    },
+    {
+      "id": "building-validation-gate-rejecting",
+      "category": "building",
+      "from": 210,
+      "to": 213,
+      "frames": 4
+    },
+    {
+      "id": "building-validation-gate-quarantining",
+      "category": "building",
+      "from": 214,
+      "to": 217,
+      "frames": 4
+    },
+    {
+      "id": "building-validation-gate-too-strict",
+      "category": "building",
+      "from": 218,
+      "to": 221,
+      "frames": 4
+    },
+    {
+      "id": "building-db-vault-writing",
+      "category": "building",
+      "from": 222,
+      "to": 225,
+      "frames": 4
+    },
+    { "id": "building-db-vault-slow", "category": "building", "from": 226, "to": 229, "frames": 4 },
+    {
+      "id": "building-db-vault-locked",
+      "category": "building",
+      "from": 230,
+      "to": 233,
+      "frames": 4
+    },
+    {
+      "id": "building-db-vault-inconsistent",
+      "category": "building",
+      "from": 234,
+      "to": 237,
+      "frames": 4
+    },
+    { "id": "badge-validation", "category": "badge", "from": 238, "to": 240, "frames": 3 },
+    { "id": "badge-storage", "category": "badge", "from": 241, "to": 243, "frames": 3 },
+    { "id": "badge-throttle", "category": "badge", "from": 244, "to": 246, "frames": 3 },
+    { "id": "badge-capacity", "category": "badge", "from": 247, "to": 249, "frames": 3 },
+    { "id": "badge-backpressure", "category": "badge", "from": 250, "to": 252, "frames": 3 },
+    { "id": "badge-retry-limit", "category": "badge", "from": 253, "to": 255, "frames": 3 },
+    { "id": "badge-timeout", "category": "badge", "from": 256, "to": 258, "frames": 3 },
+    { "id": "badge-recovery", "category": "badge", "from": 259, "to": 261, "frames": 3 },
+    { "id": "badge-strictness", "category": "badge", "from": 262, "to": 264, "frames": 3 },
+    { "id": "badge-quarantine", "category": "badge", "from": 265, "to": 267, "frames": 3 },
+    { "id": "badge-write-capacity", "category": "badge", "from": 268, "to": 270, "frames": 3 },
+    { "id": "badge-constraint-safety", "category": "badge", "from": 271, "to": 273, "frames": 3 },
+    { "id": "badge-transaction-safety", "category": "badge", "from": 274, "to": 276, "frames": 3 },
+    { "id": "packet-noise", "category": "packet", "from": 277, "to": 280, "frames": 4 },
+    { "id": "packet-noise-rejected", "category": "packet", "from": 281, "to": 284, "frames": 4 },
+    { "id": "packet-noise-quarantined", "category": "packet", "from": 285, "to": 288, "frames": 4 },
+    { "id": "packet-replay-phantom", "category": "packet", "from": 289, "to": 292, "frames": 4 },
+    { "id": "packet-replay-duplicate", "category": "packet", "from": 293, "to": 296, "frames": 4 },
+    { "id": "packet-poison-boss", "category": "packet", "from": 297, "to": 302, "frames": 6 },
+    { "id": "packet-poison-pinned", "category": "packet", "from": 303, "to": 308, "frames": 6 },
+    {
+      "id": "packet-poison-quarantined",
+      "category": "packet",
+      "from": 309,
+      "to": 314,
+      "frames": 6
+    },
+    { "id": "effect-noise-glitch", "category": "effect", "from": 315, "to": 320, "frames": 6 },
+    { "id": "effect-validation-reject", "category": "effect", "from": 321, "to": 326, "frames": 6 },
+    {
+      "id": "effect-validation-quarantine",
+      "category": "effect",
+      "from": 327,
+      "to": 332,
+      "frames": 6
+    },
+    {
+      "id": "effect-too-strict-false-reject",
+      "category": "effect",
+      "from": 333,
+      "to": 338,
+      "frames": 6
+    },
+    { "id": "effect-replay-duplicate", "category": "effect", "from": 339, "to": 344, "frames": 6 },
+    { "id": "effect-idempotency-safe", "category": "effect", "from": 345, "to": 350, "frames": 6 },
+    { "id": "effect-poison-pin", "category": "effect", "from": 351, "to": 356, "frames": 6 },
+    { "id": "effect-retry-loop", "category": "effect", "from": 357, "to": 362, "frames": 6 },
+    {
+      "id": "effect-quarantine-success",
+      "category": "effect",
+      "from": 363,
+      "to": 368,
+      "frames": 6
+    },
+    { "id": "effect-db-write", "category": "effect", "from": 369, "to": 373, "frames": 5 },
+    { "id": "effect-db-slow", "category": "effect", "from": 374, "to": 378, "frames": 5 },
+    { "id": "effect-db-locked", "category": "effect", "from": 379, "to": 383, "frames": 5 },
+    { "id": "effect-db-inconsistent", "category": "effect", "from": 384, "to": 389, "frames": 6 },
+    { "id": "ui-icon-compute", "category": "ui", "from": 390, "to": 392, "frames": 3 },
+    { "id": "ui-meter-compute", "category": "ui", "from": 393, "to": 395, "frames": 3 },
+    { "id": "ui-icon-throughput", "category": "ui", "from": 396, "to": 398, "frames": 3 },
+    { "id": "ui-icon-uptime", "category": "ui", "from": 399, "to": 401, "frames": 3 },
+    { "id": "ui-icon-complexity", "category": "ui", "from": 402, "to": 404, "frames": 3 },
+    { "id": "ui-button-upgrade", "category": "ui", "from": 405, "to": 407, "frames": 3 },
+    { "id": "ui-button-inspect", "category": "ui", "from": 408, "to": 410, "frames": 3 },
+    { "id": "ui-button-pause", "category": "ui", "from": 411, "to": 412, "frames": 2 },
+    { "id": "ui-button-speed", "category": "ui", "from": 413, "to": 415, "frames": 3 },
+    { "id": "ui-panel-recap", "category": "ui", "from": 416, "to": 417, "frames": 2 },
+    { "id": "ui-panel-inspector", "category": "ui", "from": 418, "to": 419, "frames": 2 },
+    {
+      "id": "building-observability-tower",
+      "category": "building",
+      "from": 420,
+      "to": 423,
+      "frames": 4
+    },
+    {
+      "id": "building-idempotency-ledger",
+      "category": "building",
+      "from": 424,
+      "to": 427,
+      "frames": 4
+    },
+    { "id": "building-dlq-station", "category": "building", "from": 428, "to": 431, "frames": 4 },
+    { "id": "building-cache-kiosk", "category": "building", "from": 432, "to": 435, "frames": 4 },
+    { "id": "building-auth-tower", "category": "building", "from": 436, "to": 439, "frames": 4 },
+    {
+      "id": "building-rate-limit-wall",
+      "category": "building",
+      "from": 440,
+      "to": 443,
+      "frames": 4
+    },
+    {
+      "id": "building-transaction-bridge",
+      "category": "building",
+      "from": 444,
+      "to": 447,
+      "frames": 4
+    },
+    {
+      "id": "character-gate-operator",
+      "category": "character",
+      "from": 448,
+      "to": 451,
+      "frames": 4
+    },
+    {
+      "id": "character-queue-keeper",
+      "category": "character",
+      "from": 452,
+      "to": 455,
+      "frames": 4
+    },
+    {
+      "id": "character-worker-artificer",
+      "category": "character",
+      "from": 456,
+      "to": 459,
+      "frames": 4
+    },
+    {
+      "id": "character-validation-scribe",
+      "category": "character",
+      "from": 460,
+      "to": 463,
+      "frames": 4
+    },
+    { "id": "character-db-warden", "category": "character", "from": 464, "to": 467, "frames": 4 },
+    {
+      "id": "character-courier-runner",
+      "category": "character",
+      "from": 468,
+      "to": 471,
+      "frames": 4
+    },
+    { "id": "character-maintainer", "category": "character", "from": 472, "to": 475, "frames": 4 },
+    {
+      "id": "character-gate-operator-portrait",
+      "category": "character",
+      "from": 476,
+      "to": 479,
+      "frames": 4
+    },
+    {
+      "id": "character-queue-keeper-portrait",
+      "category": "character",
+      "from": 480,
+      "to": 483,
+      "frames": 4
+    },
+    {
+      "id": "character-worker-artificer-portrait",
+      "category": "character",
+      "from": 484,
+      "to": 487,
+      "frames": 4
+    },
+    {
+      "id": "character-validation-scribe-portrait",
+      "category": "character",
+      "from": 488,
+      "to": 491,
+      "frames": 4
+    },
+    {
+      "id": "character-db-warden-portrait",
+      "category": "character",
+      "from": 492,
+      "to": 495,
+      "frames": 4
+    },
+    {
+      "id": "character-courier-runner-portrait",
+      "category": "character",
+      "from": 496,
+      "to": 499,
+      "frames": 4
+    },
+    {
+      "id": "character-maintainer-portrait",
+      "category": "character",
+      "from": 500,
+      "to": 503,
+      "frames": 4
+    },
+    { "id": "crowd-festival-idle", "category": "crowd", "from": 504, "to": 507, "frames": 4 },
+    { "id": "crowd-festival-cheer", "category": "crowd", "from": 508, "to": 511, "frames": 4 },
+    { "id": "crowd-festival-alarm", "category": "crowd", "from": 512, "to": 515, "frames": 4 },
+    { "id": "crowd-festival-evacuate", "category": "crowd", "from": 516, "to": 519, "frames": 4 },
+    { "id": "crowd-queue-line", "category": "crowd", "from": 520, "to": 523, "frames": 4 },
+    { "id": "crowd-maintenance-crew", "category": "crowd", "from": 524, "to": 527, "frames": 4 },
+    { "id": "ambient-data-fireflies", "category": "ambient", "from": 528, "to": 531, "frames": 4 },
+    { "id": "ambient-lantern-string", "category": "ambient", "from": 532, "to": 535, "frames": 4 },
+    {
+      "id": "ambient-chimney-signal-smoke",
+      "category": "ambient",
+      "from": 536,
+      "to": 539,
+      "frames": 4
+    },
+    { "id": "ambient-market-banners", "category": "ambient", "from": 540, "to": 543, "frames": 4 },
+    {
+      "id": "ambient-magic-circuit-sparks",
+      "category": "ambient",
+      "from": 544,
+      "to": 547,
+      "frames": 4
+    },
+    { "id": "ambient-parallax-clouds", "category": "ambient", "from": 548, "to": 551, "frames": 4 },
+    { "id": "ambient-courier-kites", "category": "ambient", "from": 552, "to": 555, "frames": 4 },
+    { "id": "ambient-data-rain", "category": "ambient", "from": 556, "to": 559, "frames": 4 },
+    {
+      "id": "setpiece-festival-stage",
+      "category": "setpiece",
+      "from": 560,
+      "to": 563,
+      "frames": 4
+    },
+    {
+      "id": "setpiece-message-fountain",
+      "category": "setpiece",
+      "from": 564,
+      "to": 567,
+      "frames": 4
+    },
+    {
+      "id": "setpiece-clock-bell-tower",
+      "category": "setpiece",
+      "from": 568,
+      "to": 571,
+      "frames": 4
+    },
+    {
+      "id": "setpiece-guild-notice-board",
+      "category": "setpiece",
+      "from": 572,
+      "to": 575,
+      "frames": 4
+    },
+    { "id": "setpiece-archive-cart", "category": "setpiece", "from": 576, "to": 579, "frames": 4 },
+    {
+      "id": "setpiece-debug-market-stall",
+      "category": "setpiece",
+      "from": 580,
+      "to": 583,
+      "frames": 4
+    },
+    { "id": "setpiece-canal-bridge", "category": "setpiece", "from": 584, "to": 587, "frames": 4 },
+    { "id": "setpiece-rooftop-relay", "category": "setpiece", "from": 588, "to": 591, "frames": 4 },
+    { "id": "map-ambient-canal", "category": "map", "from": 592, "to": 595, "frames": 4 },
+    { "id": "map-market-corner", "category": "map", "from": 596, "to": 599, "frames": 4 },
+    { "id": "map-rooftop-shadow", "category": "map", "from": 600, "to": 603, "frames": 4 },
+    { "id": "map-festival-skyline", "category": "map", "from": 604, "to": 607, "frames": 4 },
+    {
+      "id": "interaction-slot-hover",
+      "category": "interaction",
+      "from": 608,
+      "to": 611,
+      "frames": 4
+    },
+    {
+      "id": "interaction-slot-selected",
+      "category": "interaction",
+      "from": 612,
+      "to": 615,
+      "frames": 4
+    },
+    {
+      "id": "interaction-building-selected",
+      "category": "interaction",
+      "from": 616,
+      "to": 619,
+      "frames": 4
+    },
+    {
+      "id": "interaction-building-disabled",
+      "category": "interaction",
+      "from": 620,
+      "to": 623,
+      "frames": 4
+    },
+    {
+      "id": "interaction-target-preview",
+      "category": "interaction",
+      "from": 624,
+      "to": 627,
+      "frames": 4
+    },
+    {
+      "id": "interaction-range-preview",
+      "category": "interaction",
+      "from": 628,
+      "to": 631,
+      "frames": 4
+    },
+    { "id": "ui-cursor-select", "category": "ui", "from": 632, "to": 635, "frames": 4 },
+    { "id": "ui-cursor-place", "category": "ui", "from": 636, "to": 639, "frames": 4 },
+    { "id": "ui-tooltip-panel", "category": "ui", "from": 640, "to": 643, "frames": 4 },
+    { "id": "ui-minimap-pip", "category": "ui", "from": 644, "to": 647, "frames": 4 },
+    { "id": "ui-feedback-affordable", "category": "ui", "from": 648, "to": 651, "frames": 4 },
+    { "id": "ui-feedback-unaffordable", "category": "ui", "from": 652, "to": 655, "frames": 4 },
+    { "id": "ui-feedback-new-unlock", "category": "ui", "from": 656, "to": 659, "frames": 4 },
+    { "id": "ui-feedback-upgrade-applied", "category": "ui", "from": 660, "to": 663, "frames": 4 },
+    { "id": "ui-feedback-invalid-action", "category": "ui", "from": 664, "to": 667, "frames": 4 },
+    {
+      "id": "transition-build-phase",
+      "category": "transition",
+      "from": 668,
+      "to": 672,
+      "frames": 5
+    },
+    {
+      "id": "transition-wave-countdown",
+      "category": "transition",
+      "from": 673,
+      "to": 677,
+      "frames": 5
+    },
+    {
+      "id": "transition-incident-arrival",
+      "category": "transition",
+      "from": 678,
+      "to": 683,
+      "frames": 6
+    },
+    {
+      "id": "transition-boss-warning",
+      "category": "transition",
+      "from": 684,
+      "to": 689,
+      "frames": 6
+    },
+    {
+      "id": "transition-recap-open",
+      "category": "transition",
+      "from": 690,
+      "to": 694,
+      "frames": 5
+    },
+    {
+      "id": "effect-combo-delivery-chain",
+      "category": "effect",
+      "from": 695,
+      "to": 700,
+      "frames": 6
+    },
+    { "id": "effect-perfect-wave", "category": "effect", "from": 701, "to": 706, "frames": 6 },
+    { "id": "effect-near-miss-timeout", "category": "effect", "from": 707, "to": 712, "frames": 6 },
+    { "id": "effect-system-recovered", "category": "effect", "from": 713, "to": 718, "frames": 6 },
+    { "id": "effect-crowd-trust-cheer", "category": "effect", "from": 719, "to": 724, "frames": 6 },
+    {
+      "id": "effect-critical-trust-warning",
+      "category": "effect",
+      "from": 725,
+      "to": 730,
+      "frames": 6
+    },
+    { "id": "effect-command-ping", "category": "effect", "from": 731, "to": 735, "frames": 5 },
+    { "id": "effect-selection-ring", "category": "effect", "from": 736, "to": 740, "frames": 5 },
+    { "id": "effect-camera-alert", "category": "effect", "from": 741, "to": 745, "frames": 5 },
+    { "id": "effect-system-heartbeat", "category": "effect", "from": 746, "to": 750, "frames": 5 }
+  ]
+}

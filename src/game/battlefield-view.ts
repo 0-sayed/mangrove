@@ -6,12 +6,12 @@ export interface WorldPoint {
 }
 
 export const BATTLEFIELD_VIEW = {
-  width: 800,
-  height: 450,
-  tileSize: 32,
-  originX: 112,
-  originY: 64,
-  packetYOffset: -18
+  width: 1280,
+  height: 720,
+  tileSize: 72,
+  originX: 150,
+  originY: 10,
+  packetYOffset: -34
 } as const;
 
 export type BuildingVisualState = "idle" | "accepting" | "filling" | "processing" | "saturated";

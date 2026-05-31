@@ -50,7 +50,7 @@ export function GameCanvas({ level, map, buildingDefs, snapshot, onCommand }: Ga
       backgroundColor: "#163832",
       scene: [scene],
       scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.ENVELOP,
         autoCenter: Phaser.Scale.CENTER_BOTH
       }
     });

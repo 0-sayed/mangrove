@@ -23,6 +23,13 @@ const WAVE_LABELS: Readonly<Record<string, string>> = {
   "wave-flood": "Flood Wave"
 };
 
+const PHASE_LABELS: Readonly<Record<GameState["phase"], string>> = {
+  setup: "Prepare",
+  wave: "Wave",
+  recap: "Build Phase",
+  complete: "Complete"
+};
+
 export interface GameRun {
   readonly game: GameState;
   readonly pendingCommands: readonly Command[];
@@ -105,7 +112,7 @@ export function getRunControls(game: GameState): RunControls {
   const canActBetweenWaves = openingCompleted && isDrainedRecap;
 
   return {
-    phaseLabel: game.phase,
+    phaseLabel: labelPhase(game.phase),
     activeWaveLabel: game.activeWaveId ? labelWave(game.activeWaveId) : "No wave",
     ...(nextWave
       ? {
@@ -114,10 +121,8 @@ export function getRunControls(game: GameState): RunControls {
       : {}),
     nextWaveLabel: nextWave ? labelWave(nextWave.id) : "No wave",
     canStartNextWave:
-      nextWave !== undefined &&
-      ((game.phase === "setup" && !hasActiveMessages) || isDrainedRecap),
-    canPlaceQueueHub:
-      canActBetweenWaves && !hasQueueHub && game.meters.budget >= queueHubCost,
+      nextWave !== undefined && ((game.phase === "setup" && !hasActiveMessages) || isDrainedRecap),
+    canPlaceQueueHub: canActBetweenWaves && !hasQueueHub && game.meters.budget >= queueHubCost,
     queueHubCost,
     canIncreaseWorkerCount:
       canActBetweenWaves &&
@@ -158,4 +163,8 @@ export function createIncreaseWorkerCountCommand(currentCount: number): Command 
 
 function labelWave(waveId: string): string {
   return WAVE_LABELS[waveId] ?? waveId;
+}
+
+function labelPhase(phase: GameState["phase"]): string {
+  return PHASE_LABELS[phase];
 }

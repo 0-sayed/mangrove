@@ -2,78 +2,16 @@
 
 ## Verdict
 
-Use a browser-first stack:
+Keep the browser-first architecture:
 
 - React + Vite + TypeScript for the app shell.
 - Phaser 3 for the 2D battlefield.
-- A pure TypeScript simulator for game rules.
-- Vitest for simulator and content tests.
-- Runtime schemas for content validation.
-- Pixel-art assets with a simple sprite/atlas pipeline.
+- A pure TypeScript simulator for deterministic game rules.
+- Runtime schemas for authored content.
+- Vitest and browser smoke tests for confidence.
+- Repo-owned pixel assets generated through the Aseprite pipeline.
 
 Do not add a real backend, Tiled map authoring, multiplayer, accounts, or a custom game engine in v0.
-
-## Why This Stack
-
-The first playable must prove that the game is fun, readable, and useful for learning backend concepts.
-
-The stack should optimize for:
-
-- Fast iteration.
-- Good visual feedback.
-- Testable game rules.
-- Simple asset creation.
-- Easy expansion after the first playable works.
-
-Coding agents can do heavy implementation work, but extra frameworks still create integration risk. The v0 stack should include tools that improve the first playable directly, not tools that only help later systems.
-
-## Core Runtime
-
-### React
-
-Use React from v0 for:
-
-- HUD.
-- Buttons.
-- Wave start and recap screens.
-- Upgrade panels.
-- Resource meters.
-- Future handbook, menus, level selection, and editor screens.
-
-React should not own game rules.
-
-### Phaser 3
-
-Use Phaser 3 for:
-
-- Battlefield rendering.
-- Sprites.
-- Animation.
-- Tweens.
-- Particles.
-- Camera.
-- Pointer input on the battlefield.
-- Audio.
-- Scene orchestration.
-
-Phaser should not own game truth.
-
-### Pure TypeScript Simulator
-
-Use a pure TypeScript simulator for:
-
-- Waves.
-- Message spawning.
-- Message lifecycle.
-- Queues.
-- Workers.
-- Trust, Budget, and Backlog.
-- Win/loss state.
-- Replay and deterministic tests.
-
-This does not mean building a custom game engine. Phaser remains the game engine. The simulator is only the deterministic rules layer.
-
-The simulator must not import Phaser, React, browser APIs, timers, or rendering code.
 
 ## Architecture Boundary
 
@@ -92,385 +30,225 @@ React HUD + Phaser battlefield
   render snapshots and events
 ```
 
-The simulator decides what happened.
+The simulator decides what happened. React and Phaser show what happened.
 
-React and Phaser show what happened.
+Simulator rules:
 
-## First Playable Package Choices
-
-Use:
-
-- `react`
-- `react-dom`
-- `phaser`
-- `typescript`
-- `vite`
-- `vitest`
-- `@vitejs/plugin-react`
-- `pure-rand`
-- `@sinclair/typebox` + `ajv`, or `zod`
-
-Recommended schema choice:
-
-- Use `@sinclair/typebox` + `ajv` if level/content JSON and future editor validation matter most.
-- Use `zod` if developer speed and simpler TypeScript ergonomics matter most.
-
-Default recommendation: `@sinclair/typebox` + `ajv`, because this project will likely have authored content and level files.
-
-## Simulator Contract
-
-Suggested simulator API:
-
-- `createGame(config, seed)`
-- `step(state, commandsForTick)`
-- `hashState(state)`
-
-Suggested systems:
-
-- `WaveSystem`
-- `PathSystem`
-- `QueueSystem`
-- `WorkerSystem`
-- `ResourceSystem`
-
-First playable commands:
-
-- `PlaceBuilding`
-- `StartWave`
-- `SetWorkerCount`
-
-Full MVP may add:
-
-- `UpgradeBuilding`
-
-Simulator requirements:
-
-- Fixed ticks.
-- Seeded randomness.
-- Command inputs.
-- Plain state objects.
-- Integer or stable deterministic math for core state.
-- Stable state hash serialization for tests.
-- No `Math.random` in gameplay logic.
-- No `Date.now` in gameplay logic.
-- No unordered object iteration affecting gameplay outcomes.
-- No Phaser imports.
 - No React imports.
+- No Phaser imports.
+- No browser APIs.
+- No timers.
+- No `Math.random` or `Date.now` in gameplay logic.
+- Deterministic command inputs.
+- Stable state hashing for replay tests.
 
-Replay means replaying player commands against the deterministic simulator and checking state hashes. It does not mean video replay or full timeline editing.
+## Runtime Vocabulary
 
-## First Playable Data Contracts
+The active runtime should pivot from message lifecycle vocabulary to tower-defense vocabulary.
 
-Define these v0 TypeScript types and runtime schemas before runtime content loading.
+### Content Types
 
-`LevelConfig` must include:
+`LevelConfig` should include:
 
 - `id`
 - `mapId`
 - `startingState`
-- `startingBuildings`
-- `availableBuildings`
+- `availableTowers`
+- `startingTowers`
 - `waves`
 - `winCondition`
 - `lossCondition`
 - `recaps`
 
-`MapMetadata` must include:
+`MapDef` should include:
 
-- Stable path ids.
-- Stable build slot ids.
-- Spawn ids.
-- Exit ids.
-- Slot role constraints.
+- `paths`
+- `spawnPoints`
+- `serviceCore`
+- `buildPads`
+- `junctions`
+- `terrain`
 
-`BuildingDef` must include:
+`PathDef` should include:
 
 - `id`
-- `role`
+- ordered waypoints
+- `spawnId`
+- `exitId`
+- optional branch/junction metadata
+
+`BuildPadDef` should include:
+
+- `id`
+- position
+- allowed tower families
+- lane influence or range anchor
+
+`TowerDef` should include:
+
+- `id`
+- `family`
 - `cost`
-- `allowedSlots`
+- `range`
+- `targeting`
 - `stats`
-- `visibleStates`
+- `states`
+- `softwareShadow`
 
-`WaveDef` must include:
+`EnemyDef` should include:
 
 - `id`
-- `durationTicks`
+- `health`
+- `speed`
+- `reward`
+- `leakDamage`
+- `traits`
+- `softwareShadow`
+
+`WaveDef` should include:
+
+- `id`
+- `preview`
 - `spawnSchedule`
-- `messageTypes`
-- `timeoutTicks`
+- `enemyTypes`
+- `buildCountdownTicks`
 - `recapId`
 
-`Command` must be a discriminated union:
+### Commands
 
+First TD slice commands:
+
+- `BuildTower`
+- `UpgradeTower`
 - `StartWave`
-- `PlaceBuilding`
-- `SetWorkerCount`
+- `SelectTower`
+- `CancelBuildMode`
 
-`UpgradeBuilding` is allowed in the full MVP contract, but not in the first playable command set.
+`StartWave` may remain for development and early player agency, but the target design supports build countdowns and auto-starting waves.
 
-`SimSnapshot` must include:
+### View/Input Contracts
+
+Define shared view-facing contracts before splitting Phaser and React work:
+
+- `BuildIntent`: selected tower family, affordability state, hovered build pad, and placement validity.
+- `SelectionState`: selected tower, selected enemy, or empty selection.
+- `HoverState`: hovered build pad, tower, enemy, HUD control, or empty hover.
+- `RangePreview`: tower family or placed tower ID plus center/radius data.
+- `ConnectionPreview`: influenced roads, linked towers, support radius, route destinations, and weak-coverage warnings for the current hover/selection.
+- `WavePreview`: next wave ID, enemy composition, countdown, and short game-facing warning.
+
+React may create build intent from HUD controls. Phaser may update hover/selection intent from battlefield pointers. The simulator still owns whether commands are accepted.
+
+### Snapshot
+
+`SimSnapshot` should include:
 
 - `tick`
 - `phase`
 - `meters`
-- `buildings`
-- `messages`
-- `lanePressure`
+- `map`
+- `towers`
+- `enemies`
+- `projectiles`
+- `effects`
+- `wave`
+- `connections`
 - `alerts`
 
-`SimEvent` must include enough event types to drive animation and recap:
+`meters` should include:
 
-- Message spawned.
-- Message accepted.
-- Message queued.
-- Message dropped.
-- Worker started.
-- Worker acked.
-- Trust changed.
+- `townHealth`
+- `buildBudget`
+- `pressure`
+
+### Events
+
+`SimEvent` should include enough information to animate:
+
+- Enemy spawned.
+- Enemy moved or path progress changed.
+- Tower built.
+- Tower targeted.
+- Projectile fired.
+- Enemy damaged.
+- Enemy slowed/held/routed.
+- Component influence changed.
+- Weak coverage or overload warning changed.
+- Enemy resolved.
+- Enemy leaked.
+- Town Health changed.
 - Budget changed.
-- Backlog changed.
+- Wave started.
 - Wave ended.
 
-`PostWaveResult` must include:
+## Systems
 
-- `waveId`
-- Delivered count.
-- Dropped count.
-- Expired count.
-- Backlog peak.
-- Trust delta.
-- Budget delta.
-- Player actions used.
-- Revealed backend term.
-- Revealed law.
+Suggested simulator systems:
+
+- `WaveSystem`: schedules enemy spawns and wave end conditions.
+- `PathSystem`: moves enemies along authored paths.
+- `TowerSystem`: finds targets and applies tower effects.
+- `ConnectionSystem`: derives coverage overlap, support links, route influence, and weak-coverage warnings from towers, pads, paths, and active enemies.
+- `ProjectileSystem`: resolves visible attacks and hit timing where needed.
+- `LeakSystem`: damages Town Health when enemies reach the Service Core.
+- `EconomySystem`: awards and spends Build Budget.
+- `PressureSystem`: derives pressure from enemy count, lane risk, and near-leaks.
+
+Delay backend-pipeline systems such as `QueueSystem` and `WorkerSystem` as literal lifecycle stages. Their concepts reappear as tower families: Queue Snare and Worker Tower.
 
 ## Render Contract
 
-React may:
+Phaser owns:
 
-- Dispatch player commands.
-- Render HUD, buttons, panels, meters, recaps, menus, and future handbook screens.
-- Subscribe to simulator snapshots and derived view state.
+- Map drawing.
+- Road/path rendering.
+- Enemy sprites moving along paths.
+- Tower sprites and attack animations.
+- Projectiles, hit effects, leak effects, and range previews.
+- Pointer input over the battlefield.
 
-React must not:
+React owns:
 
-- Mutate gameplay state directly.
-- Own timing or random gameplay outcomes.
+- HUD.
+- Build buttons.
+- Wave preview.
+- Tower selection/upgrade panel.
+- Recap.
+- Settings/diagnostics when enabled.
 
-Phaser may:
+Neither Phaser nor React owns game truth.
 
-- Dispatch battlefield player commands.
-- Render simulator snapshots.
-- Map message progress to sprite positions.
-- Map building visible states to animation states.
-- Play visual/audio feedback from simulator events.
+## Asset Pipeline
 
-Phaser must not:
+Use:
 
-- Mutate gameplay state directly.
-- Use Phaser physics as the source of gameplay truth.
-- Depend on Phaser time for simulation outcomes.
+- Aseprite Lua recipes as source instructions.
+- Generated `.aseprite` sources for editable assets.
+- PNG sprite sheets and JSON atlas metadata for Phaser.
+- Manifest metadata to verify coverage.
 
-Phaser tweens and particles are visual only.
+Generated outputs live under `src/assets/generated/`. Recipes live under `tools/assets/aseprite/recipes/`.
 
-## Content Authoring Contract
-
-For v0, the first map may be authored as TypeScript or JSON constants.
-
-Content owns:
-
-- Map id.
-- Scenario.
-- Starting buildings.
-- Starting resources/meters.
-- Wave sequence.
-- Incident behavior.
-- Available buildings and upgrades.
-- Build slots.
-- Costs.
-- Win and loss conditions.
-- Concept unlocks.
-- Post-wave recap copy.
-
-The first playable can hard-code parts of Message Festival, but adding or changing waves should not require rewriting game code.
-
-Level JSON and map metadata must have v0 schema validation before runtime loading.
-
-## Deferred Stack
-
-### Backend
-
-Do not build a backend in v0.
-
-The game's backend concepts are simulated locally. A real backend is only needed later for:
-
-- Accounts.
-- Cloud saves.
-- Multiplayer.
-- Async raids.
-- Leaderboards.
-- Shared user-created levels.
-- Campaign progress across devices.
-
-For v0, use local browser state only if saving is needed.
-
-Allowed local storage:
-
-- `localStorage` for tiny settings or completion flags.
-- IndexedDB later if local save data becomes larger.
-
-### Tiled
-
-Do not use Tiled for the first playable.
-
-The first map should be hardcoded through stable content IDs, not scattered Phaser coordinates.
-
-Allowed first playable map data:
-
-- `spawn_festival_gate`
-- `slot_ingress_1`
-- `slot_worker_1`
-- `slot_queue_1`
-- `exit_storage_1`
-- authored path points
-- authored build slot positions
-
-Add Tiled only when:
-
-- the first playable loop is fun,
-- a second map is being authored,
-- hand-editing path or slot coordinates becomes the bottleneck.
-
-### ECS
-
-Do not use an ECS library in v0.
-
-Consider `bitECS` later only if entity count or system complexity becomes hard to manage with plain TypeScript state and systems.
-
-### Godot, PixiJS, Kaboom, Excalibur, Plain Canvas
-
-Do not use these for v0.
-
-- Godot web export adds a separate engine/editor/export workflow.
-- PixiJS and plain Canvas are too low-level for this game.
-- Kaboom is better for tiny arcade prototypes than this RTS/tower-defense shape.
-- Excalibur is viable, but Phaser has the stronger ecosystem for this browser strategy slice.
-
-## Assets And Animation
-
-Use a pixel-art-ish style.
-
-Target style:
-
-- Cozy cyber-medieval pixel town.
-- 32x32 or 48x48 chunky sprites.
-- Strong silhouettes.
-- Clear state changes.
-- Short 3-5 frame animation loops.
-- Readable at zoomed-out battlefield scale.
-
-Theme:
-
-Production Town is a tiny digital festival town. API gates, queues, workers, validators, and storage vaults are buildings. Incidents arrive as animated message creatures or packets. The player keeps flow alive by defending Trust, Budget, and Backlog.
-
-Asset priorities:
-
-1. Readability.
-2. Feedback.
-3. Consistent silhouette.
-4. Charm.
-5. Polish.
-
-First playable assets:
-
-- API Gate building.
-- Worker Yard building.
-- Queue Hub building.
-- Useful message packet.
-- Dropped message effect.
-- Ack/delivery effect.
-- Backlog/saturation effect.
-- Simple lane/path visuals.
-- Trust, Budget, and Backlog UI icons.
-
-## Asset Tools
-
-Recommended tools:
-
-- Pixelorama for free/open-source pixel art and frame animation.
-- Aseprite if a stronger paid pixel-art workflow is wanted.
-- Kenney assets for placeholder/prototype art.
-- Free Texture Packer or Phaser Texture Atlas Creator for atlas generation.
-- AI image generation for concept art and style exploration, followed by pixel cleanup.
-
-Preferred v0 workflow:
-
-1. Start with the downloaded starter assets plus simple readable overlays.
-2. Build the playable loop.
-3. Replace only the most important sprites with custom pixel art.
-4. Pack repeated sprites into an atlas when asset count grows.
-
-Do not block gameplay implementation on polished art.
+Do not commit review screenshots, GIFs, demo scenes, or temporary QA exports.
 
 ## Testing Stack
 
-Use Vitest for:
+Use the smallest test that proves the change:
 
-- simulator replay tests,
-- deterministic state hash tests,
-- content schema validation tests,
-- sim-boundary tests that prevent Phaser or React imports inside `sim/`.
+- Content/schema tests for level, map, tower, enemy, and wave definitions.
+- Simulator tests for deterministic movement, targeting, damage, leaks, rewards, and wave end.
+- React tests for HUD/build controls.
+- Phaser/browser smoke tests for visible canvas, HUD, no blocking console errors, and nonblank battlefield.
 
-Use Playwright later for:
+Browser smoke should verify the play screen reads as tower defense: visible roads, build pads, towers, enemies, and Service Core.
 
-- browser smoke tests,
-- visual sanity checks,
-- ensuring the canvas is nonblank,
-- checking HUD interactions.
+## Migration Boundary
 
-Do not build a large browser test suite before the first playable loop exists.
+Current runtime still contains the Message Festival prototype. The safe course is:
 
-## Source Layout
+1. Keep T013 asset/render work as prototype evidence.
+2. Land the planning correction.
+3. Start the TD runtime refactor from new roadmap tasks.
+4. Do not rename every existing runtime type in this planning branch.
 
-Suggested initial layout:
-
-```txt
-src/
-  app/
-    React shell, HUD, panels, recap
-  game/
-    Phaser scenes, sprites, render adapter
-  sim/
-    deterministic rules and systems
-  content/
-    first playable data, schemas, authored map constants
-  assets/
-    sprites, atlases, generated art
-  tests/
-    simulator and content tests
-```
-
-## Non-Negotiable Rules
-
-- No gameplay truth in React.
-- No gameplay truth in Phaser.
-- No Phaser imports inside `sim/`.
-- No React imports inside `sim/`.
-- No `Math.random` in simulator logic.
-- No `Date.now` in simulator logic.
-- Use seeded randomness.
-- Keep map IDs stable even before Tiled exists.
-- Do not add backend until a real online feature needs it.
-- Do not add Tiled until map authoring becomes a real bottleneck.
-- Do not add art polish before the game loop is playable.
-
-## First Implementation Order
-
-1. Set up React + Vite + Phaser + TypeScript.
-2. Create the pure simulator with Wave 1 and Wave 2.
-3. Add Vitest replay/hash tests.
-4. Render the sim in Phaser with placeholder pixel assets.
-5. Build the HUD and recap in React.
-6. Improve the minimum assets needed for readability.
-7. Decide whether Tiled or backend is justified after the first playable is fun.
+The first implementation task after this pivot should create the TD schemas and simulator contracts before touching Phaser animation polish.

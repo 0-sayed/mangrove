@@ -31,11 +31,13 @@ describe("run controller", () => {
       tick: 0,
       phase: "setup"
     });
+    expect(getRunControls(initial.game).phaseLabel).toBe("Prepare");
     expect(toRunSnapshot(started)).toMatchObject({
       tick: 1,
       phase: "wave",
       activeWaveId: "wave-opening-flow"
     });
+    expect(getRunControls(started.game).phaseLabel).toBe("Wave");
   });
 
   it("unlocks Queue Hub, worker tuning, and Flood Wave after Opening Flow drains", () => {
@@ -43,6 +45,7 @@ describe("run controller", () => {
     const controls = getRunControls(afterOpening.game);
 
     expect(toRunSnapshot(afterOpening).phase).toBe("recap");
+    expect(controls.phaseLabel).toBe("Build Phase");
     expect(controls).toMatchObject({
       canPlaceQueueHub: true,
       canIncreaseWorkerCount: true,

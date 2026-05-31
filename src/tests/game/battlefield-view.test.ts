@@ -95,18 +95,18 @@ function snapshotWith(overrides: Partial<SimSnapshot>): SimSnapshot {
 describe("battlefield view model", () => {
   it("maps authored path nodes to world points", () => {
     expect(pathWorldPoints(messageFestivalV0Map, "path-main")).toEqual([
-      { x: 144, y: 256 },
-      { x: 240, y: 256 },
-      { x: 304, y: 256 },
-      { x: 368, y: 256 },
-      { x: 496, y: 256 }
+      { x: 222, y: 442 },
+      { x: 438, y: 442 },
+      { x: 582, y: 442 },
+      { x: 726, y: 442 },
+      { x: 1014, y: 442 }
     ]);
   });
 
   it("accepts schema-valid paths with two visible nodes", () => {
     expect(pathWorldPoints(shortPathMap, "path-short")).toEqual([
-      { x: 144, y: 128 },
-      { x: 208, y: 128 }
+      { x: 222, y: 154 },
+      { x: 366, y: 154 }
     ]);
   });
 
@@ -118,10 +118,10 @@ describe("battlefield view model", () => {
   });
 
   it("anchors active messages to their lane stations", () => {
-    expect(messageWorldPosition(messageFestivalV0Map, queuedMessage)).toEqual({ x: 304, y: 238 });
+    expect(messageWorldPosition(messageFestivalV0Map, queuedMessage)).toEqual({ x: 582, y: 408 });
     expect(messageWorldPosition(messageFestivalV0Map, processingMessage)).toEqual({
-      x: 368,
-      y: 238
+      x: 726,
+      y: 408
     });
   });
 
@@ -134,7 +134,7 @@ describe("battlefield view model", () => {
         pathId: "path-main",
         ageTicks: 32
       })
-    ).toEqual({ x: 304, y: 238 });
+    ).toEqual({ x: 582, y: 408 });
     expect(
       messageWorldPosition(messageFestivalV0Map, {
         id: "expired-1",
@@ -143,7 +143,7 @@ describe("battlefield view model", () => {
         pathId: "path-main",
         ageTicks: 121
       })
-    ).toEqual({ x: 304, y: 238 });
+    ).toEqual({ x: 582, y: 408 });
   });
 
   it("falls back to the API gate for failures when a path has no queue hub", () => {
@@ -155,7 +155,7 @@ describe("battlefield view model", () => {
         pathId: "path-direct",
         ageTicks: 32
       })
-    ).toEqual({ x: 240, y: 142 });
+    ).toEqual({ x: 438, y: 192 });
   });
 
   it("anchors direct-handoff failures to the placed API Gate when the queue is unbuilt", () => {
@@ -171,7 +171,7 @@ describe("battlefield view model", () => {
         },
         messageFestivalV0Level.startingBuildings
       )
-    ).toEqual({ x: 240, y: 238 });
+    ).toEqual({ x: 438, y: 408 });
   });
 
   it("counts queued messages for queue fill", () => {

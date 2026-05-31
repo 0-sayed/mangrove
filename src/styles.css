@@ -22,6 +22,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 button,
@@ -33,24 +34,25 @@ select {
 
 .app-shell {
   display: grid;
+  position: relative;
   height: 100vh;
+  height: 100dvh;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
   overflow: hidden;
-  padding: 16px;
-  background: linear-gradient(180deg, rgba(16, 24, 32, 0.1), rgba(16, 24, 32, 0.86)), #173b34;
+  background: #10251f;
 }
 
 .hud {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  left: 14px;
+  z-index: 2;
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-columns: 1fr auto auto;
   align-items: start;
-  gap: 12px 18px;
-}
-
-.hud__identity {
-  min-width: 0;
+  gap: 10px 12px;
+  pointer-events: none;
 }
 
 .hud__status,
@@ -67,27 +69,15 @@ select {
   font-size: 0.82rem;
 }
 
-.eyebrow {
-  margin: 0;
-  color: #d2e3c8;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-}
-
-.level-label {
-  margin: 2px 0 0;
-  color: #d9efe4;
-  font-size: 0.9rem;
-}
-
 h1 {
   margin: 0;
-  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-size: 1.85rem;
   letter-spacing: 0;
+  line-height: 1;
 }
 
 .meters {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .hud__status span,
@@ -95,16 +85,27 @@ h1 {
 .diagnostics span {
   border: 1px solid rgba(248, 245, 236, 0.24);
   border-radius: 4px;
-  padding: 6px 10px;
-  background: rgba(16, 24, 32, 0.48);
+  padding: 6px 9px;
+  background: rgba(16, 24, 32, 0.7);
+  backdrop-filter: blur(8px);
 }
 
 .meter {
+  position: relative;
   display: inline-grid;
-  min-width: 96px;
-  grid-template-columns: auto 1fr;
-  align-items: baseline;
+  min-width: 106px;
+  grid-template-columns: 24px auto 1fr;
+  align-items: center;
   gap: 6px;
+}
+
+.hud-icon {
+  width: 24px;
+  height: 24px;
+  background-image: var(--hud-icon-image);
+  background-position: var(--hud-icon-position);
+  background-size: var(--hud-icon-size);
+  image-rendering: pixelated;
 }
 
 .meter strong {
@@ -124,7 +125,12 @@ h1 {
 }
 
 .hud__controls {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
+}
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
 }
 
 .hud__controls button {
@@ -137,6 +143,65 @@ h1 {
   cursor: pointer;
 }
 
+.hud button,
+.hud__status span,
+.meter,
+.tooltip-anchor {
+  pointer-events: auto;
+}
+
+.hud__status span,
+.meter,
+.tooltip-anchor {
+  position: relative;
+}
+
+.hud__status span:hover,
+.hud__status span:focus-visible,
+.meter:hover,
+.meter:focus-visible,
+.tooltip-anchor:hover,
+.tooltip-anchor:focus-within {
+  z-index: 30;
+}
+
+.hud__status span::after,
+.meter::after,
+.tooltip-anchor::after {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 31;
+  width: max-content;
+  max-width: 260px;
+  border: 1px solid rgba(248, 245, 236, 0.28);
+  border-radius: 4px;
+  padding: 7px 9px;
+  color: #f8f5ec;
+  background: rgba(12, 21, 28, 0.94);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  content: attr(data-tooltip);
+  font-size: 0.78rem;
+  line-height: 1.25;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  white-space: normal;
+}
+
+.hud__status span:hover::after,
+.hud__status span:focus-visible::after,
+.meter:hover::after,
+.meter:focus-visible::after,
+.tooltip-anchor:hover::after,
+.tooltip-anchor:focus-within::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .hud__controls button:disabled {
   color: rgba(248, 245, 236, 0.48);
   background: rgba(16, 24, 32, 0.42);
@@ -147,21 +212,33 @@ h1 {
   background: #326b60;
 }
 
-.game-canvas {
-  display: grid;
-  min-height: 0;
-  place-items: center;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  border: 2px solid rgba(248, 245, 236, 0.18);
-  background: #163832;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: #143d34;
 }
 
 .game-canvas canvas {
-  max-width: 100%;
-  max-height: 100%;
+  display: block;
 }
 
 .diagnostics {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -177,12 +254,18 @@ h1 {
 @media (max-width: 720px) {
   .hud {
     grid-template-columns: 1fr;
+    right: 10px;
+    left: 10px;
   }
 
   .hud__status,
   .hud__controls,
   .meters {
     justify-content: flex-start;
+  }
+
+  .hud__controls {
+    grid-column: auto;
   }
 
   .hud__controls button {
