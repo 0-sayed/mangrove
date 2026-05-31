@@ -186,6 +186,8 @@ const ConnectionPreviewSchema = Type.Object(
     kind: Type.Union([
       Type.Literal("coverage-overlap"),
       Type.Literal("stall-window"),
+      Type.Literal("weak-coverage"),
+      Type.Literal("overload-warning"),
       Type.Literal("route-influence"),
       Type.Literal("support-aura")
     ])
@@ -210,7 +212,8 @@ const SnapshotEnemySchema = Type.Object(
     pathId: IdSchema,
     progress: Type.Number({ minimum: 0 }),
     health: NonNegativeNumberSchema,
-    status: Type.Union([Type.Literal("active"), Type.Literal("resolved"), Type.Literal("leaked")])
+    status: Type.Union([Type.Literal("active"), Type.Literal("resolved"), Type.Literal("leaked")]),
+    stallRemainingTicks: Type.Optional(Type.Integer({ minimum: 0 }))
   },
   { additionalProperties: false }
 );
@@ -279,6 +282,55 @@ const SimEventSchema = Type.Union([
       waveId: IdSchema,
       pathId: IdSchema,
       leakDamage: PositiveIntegerSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("tower.fired"),
+      towerInstanceId: IdSchema,
+      towerId: IdSchema,
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      damage: NonNegativeNumberSchema,
+      projectileId: IdSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.resolved"),
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      waveId: IdSchema,
+      pathId: IdSchema,
+      reward: NonNegativeNumberSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.stalled"),
+      towerInstanceId: IdSchema,
+      enemyInstanceId: IdSchema,
+      durationTicks: PositiveIntegerSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.routed"),
+      towerInstanceId: IdSchema,
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      waveId: IdSchema,
+      fromPathId: IdSchema,
+      toPathId: IdSchema,
+      reason: Type.Literal("healthier-coverage")
     },
     { additionalProperties: false }
   ),

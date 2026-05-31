@@ -101,6 +101,14 @@ describe("Traffic Surge At The Gate content", () => {
     }
   });
 
+  it("paces enemies slowly enough to read on the battlefield", () => {
+    const shortestPathLength = Math.min(...trafficSurgeMap.paths.map((path) => path.length));
+
+    for (const enemyDef of trafficSurgeEnemyDefs) {
+      expect(shortestPathLength / enemyDef.speed).toBeGreaterThanOrEqual(50);
+    }
+  });
+
   it("places pads for first-level tower-defense decisions", () => {
     const workerPad = trafficSurgeMap.buildPads.find((pad) => pad.id === "pad-worker-a");
     const queuePad = trafficSurgeMap.buildPads.find((pad) => pad.id === "pad-queue-a");

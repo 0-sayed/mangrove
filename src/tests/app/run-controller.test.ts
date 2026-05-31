@@ -10,6 +10,17 @@ import {
   queueRunCommand,
   toRunSnapshot
 } from "@app/run-controller";
+import type { GameRun } from "@app/run-controller";
+
+function advanceUntil(run: GameRun, phase: GameRun["game"]["phase"]): GameRun {
+  let current = run;
+
+  for (let tick = 0; tick < 1000 && current.game.phase !== phase; tick += 1) {
+    current = advanceRun(current, 1);
+  }
+
+  return current;
+}
 
 describe("run controller", () => {
   it("bootstraps the authored TD level and exposes setup controls", () => {
@@ -90,7 +101,7 @@ describe("run controller", () => {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const completed = advanceRun(started, 110);
+    const completed = advanceUntil(started, "recap");
 
     expect(getRunControls(started.game).isAutoAdvancing).toBe(true);
     expect(toRunSnapshot(completed).phase).toBe("recap");

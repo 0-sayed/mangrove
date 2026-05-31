@@ -7,8 +7,19 @@ import {
   applyRunCommand,
   createInitialRun,
   getRunControls,
-  toRunSnapshot
+  toRunSnapshot,
+  type GameRun
 } from "@app/run-controller";
+
+function advanceUntil(run: GameRun, phase: GameRun["game"]["phase"]): GameRun {
+  let current = run;
+
+  for (let tick = 0; tick < 1000 && current.game.phase !== phase; tick += 1) {
+    current = advanceRun(current, 1);
+  }
+
+  return current;
+}
 
 describe("Hud", () => {
   it("renders TD meters with atlas-backed icons", () => {
@@ -17,7 +28,9 @@ describe("Hud", () => {
       <Hud
         snapshot={toRunSnapshot(run)}
         controls={getRunControls(run.game)}
+        runSpeed={1}
         onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
       />
     );
 
@@ -41,7 +54,9 @@ describe("Hud", () => {
       <Hud
         snapshot={toRunSnapshot(run)}
         controls={getRunControls(run.game)}
+        runSpeed={1}
         onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
       />
     );
 
@@ -66,7 +81,9 @@ describe("Hud", () => {
       <Hud
         snapshot={toRunSnapshot(run)}
         controls={getRunControls(run.game)}
+        runSpeed={1}
         onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
       />
     );
 
@@ -79,41 +96,47 @@ describe("Hud", () => {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const recap = advanceRun(started, 110);
+    const recap = advanceUntil(started, "recap");
     const finalWaveStarted = applyRunCommand(
-      advanceRun(
+      advanceUntil(
         applyRunCommand(recap, {
           type: "StartWave",
           waveId: "wave-burst-surge"
         }),
-        120
+        "recap"
       ),
       {
         type: "StartWave",
         waveId: "wave-hot-shard"
       }
     );
-    const completed = advanceRun(finalWaveStarted, 150);
+    const completed = advanceUntil(finalWaveStarted, "complete");
 
     const runningHtml = renderToString(
       <Hud
         snapshot={toRunSnapshot(started)}
         controls={getRunControls(started.game)}
+        runSpeed={1}
         onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
       />
     );
     const recapHtml = renderToString(
       <Hud
         snapshot={toRunSnapshot(recap)}
         controls={getRunControls(recap.game)}
+        runSpeed={1}
         onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
       />
     );
     const completedHtml = renderToString(
       <Hud
         snapshot={toRunSnapshot(completed)}
         controls={getRunControls(completed.game)}
+        runSpeed={1}
         onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
       />
     );
 
@@ -123,5 +146,25 @@ describe("Hud", () => {
     expect(recapHtml).not.toContain("No Wave Available");
     expect(completedHtml).toContain("No Wave Available");
     expect(completedHtml).not.toContain("Start Complete");
+  });
+
+  it("renders a game speed segmented control", () => {
+    const run = createInitialRun(12345);
+    const html = renderToString(
+      <Hud
+        snapshot={toRunSnapshot(run)}
+        controls={getRunControls(run.game)}
+        runSpeed={2}
+        onCommand={() => undefined}
+        onRunSpeedChange={() => undefined}
+      />
+    );
+
+    expect(html).toContain("aria-label=\"Game speed\"");
+    expect(html).toContain("Pause");
+    expect(html).toContain("1x");
+    expect(html).toContain("2x");
+    expect(html).toContain("4x");
+    expect(html).toContain("aria-pressed=\"true\">2x");
   });
 });

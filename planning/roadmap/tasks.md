@@ -69,25 +69,25 @@ Build one short local browser tower-defense level with three readable waves. The
 
 ## Task Graph
 
-| Task                                                            | Depends On        | Contract                                |
-| --------------------------------------------------------------- | ----------------- | --------------------------------------- |
-| [ ] `TD001` - Define TD content and runtime contracts           | course correction | `planning/context/td-task-contracts.md` |
-| [ ] `TD002` - Implement enemy travel, waves, leaks, and economy | `TD001`           | `planning/context/td-task-contracts.md` |
-| [ ] `TD003` - Implement tower combat, stall, and routing        | `TD002`           | `planning/context/td-task-contracts.md` |
-| [ ] `TD004` - Author first TD level content                     | `TD001`           | `planning/context/td-task-contracts.md` |
-| [ ] `TD005` - Render TD combat readability in Phaser            | `TD003`, `TD004`  | `planning/context/td-task-contracts.md` |
-| [ ] `TD006` - Build TD HUD, build controls, and tooltips        | `TD005`           | `planning/context/td-task-contracts.md` |
-| [ ] `TD007` - Add TD recap, balance, and browser smoke          | `TD006`           | `planning/context/td-task-contracts.md` |
+| Task                                                            | Done | Depends On        | Contract                                |
+| --------------------------------------------------------------- | ---- | ----------------- | --------------------------------------- |
+| `TD001` - Define TD content and runtime contracts               | [x]  | course correction | `planning/context/td-task-contracts.md` |
+| `TD002` - Implement enemy travel, waves, leaks, and economy     | [x]  | `TD001`           | `planning/context/td-task-contracts.md` |
+| `TD003` - Implement tower combat, stall, and routing            | [x]  | `TD002`           | `planning/context/td-task-contracts.md` |
+| `TD004` - Author first TD level content                         | [x]  | `TD001`           | `planning/context/td-task-contracts.md` |
+| `TD005` - Render TD combat readability in Phaser                | [ ]  | `TD003`, `TD004`  | `planning/context/td-task-contracts.md` |
+| `TD006` - Build TD HUD, build controls, and tooltips            | [ ]  | `TD005`           | `planning/context/td-task-contracts.md` |
+| `TD007` - Add TD recap, balance, and browser smoke              | [ ]  | `TD006`           | `planning/context/td-task-contracts.md` |
 
 ## Execution Waves
 
 Create each branch from updated `main` after the previous wave lands. Same-wave branches should be siblings, not branches of each other.
 
-| Wave | Parallel Tasks     | Branches                                                                  |
-| ---- | ------------------ | ------------------------------------------------------------------------- |
-| 1    | `TD001`            | `feat/td001-contracts`                                                    |
-| 2    | `TD002`, `TD004`   | `feat/td002-travel-leaks-economy`, `feat/td004-first-level-content`       |
-| 3    | `TD003`            | `feat/td003-tower-combat-routing`                                         |
-| 4    | `TD005`            | `feat/td005-phaser-combat-readability`                                    |
-| 5    | `TD006`            | `feat/td006-hud-build-controls`                                           |
-| 6    | `TD007`            | `feat/td007-recap-balance-smoke`                                          |
+| Wave | Done | Parallel Tasks     | Branches                                                                  |
+| ---- | ---- | ------------------ | ------------------------------------------------------------------------- |
+| 1    | [x]  | `TD001`            | `feat/td001-contracts`                                                    |
+| 2    | [x]  | `TD002`, `TD004`   | `feat/td002-travel-leaks-economy`, `feat/td004-first-level-content`       |
+| 3    | [x]  | `TD003`            | `feat/td003-tower-combat-routing`                                         |
+| 4    | [ ]  | `TD005`            | `feat/td005-phaser-combat-readability`                                    |
+| 5    | [ ]  | `TD006`            | `feat/td006-hud-build-controls`                                           |
+| 6    | [ ]  | `TD007`            | `feat/td007-recap-balance-smoke`                                          |

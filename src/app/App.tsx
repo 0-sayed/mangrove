@@ -10,7 +10,7 @@ import {
 import { GameCanvas } from "@game/GameCanvas";
 
 export function App() {
-  const { snapshot, controls, sendCommand } = useGameRun();
+  const { snapshot, controls, runSpeed, sendCommand, setRunSpeed } = useGameRun();
 
   return (
     <ErrorBoundary>
@@ -18,7 +18,9 @@ export function App() {
         <Hud
           snapshot={snapshot}
           controls={controls}
+          runSpeed={runSpeed}
           onCommand={sendCommand}
+          onRunSpeedChange={setRunSpeed}
         />
         <GameCanvas
           level={trafficSurgeLevel}

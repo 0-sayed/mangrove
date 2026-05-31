@@ -6,7 +6,13 @@ import {
   tdContractFixtureMap,
   tdContractFixtureTowerDefs
 } from "@content/td-contract-fixture";
-import type { Command } from "@content/schemas";
+import {
+  trafficSurgeEnemyDefs,
+  trafficSurgeLevel,
+  trafficSurgeMap,
+  trafficSurgeTowerDefs
+} from "@content/traffic-surge-level";
+import type { Command, LevelConfig, MapDef } from "@content/schemas";
 import { runReplay, type ReplayCommand } from "@sim/replay";
 
 const replayOptions = {
@@ -60,7 +66,7 @@ describe("TD sim replay", () => {
       pathId: "road-main",
       status: "active"
     });
-    expect(first.state.enemies[0]?.progress).toBeCloseTo(1 / 3, 6);
+    expect(first.state.enemies[0]?.progress).toBeCloseTo(5 / 12, 6);
   });
 
   it("keeps command order as part of deterministic input", () => {
@@ -138,9 +144,55 @@ describe("TD sim replay", () => {
         id: "worker-tower@pad-worker-a#0",
         towerId: "worker-tower",
         padId: "pad-worker-a",
-        cooldownRemainingTicks: 0
+        cooldownRemainingTicks: 12
       }
     ]);
+  });
+
+  it("replays tower combat, stall, and routing deterministically", () => {
+    const hotShardWave = trafficSurgeLevel.waves.find((wave) => wave.id === "wave-hot-shard");
+
+    if (!hotShardWave) {
+      throw new Error("Expected traffic surge fixture to include wave-hot-shard.");
+    }
+
+    const routingMap: MapDef = {
+      ...trafficSurgeMap,
+      buildPads: [
+        ...trafficSurgeMap.buildPads,
+        { id: "pad-worker-relief", x: 9, y: 8, allowedTowerKinds: ["worker"] }
+      ]
+    };
+    const routingLevel: LevelConfig = {
+      ...trafficSurgeLevel,
+      startingState: { ...trafficSurgeLevel.startingState, buildBudget: 120 },
+      waves: [hotShardWave]
+    };
+    const commandLog: readonly ReplayCommand[] = [
+      { tick: 0, command: { type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-relief" } },
+      { tick: 1, command: { type: "BuildTower", towerId: "queue-snare", padId: "pad-queue-a" } },
+      { tick: 2, command: { type: "BuildTower", towerId: "load-balancer-gate", padId: "pad-load-balancer-a" } },
+      { tick: 3, command: { type: "StartWave", waveId: "wave-hot-shard" } }
+    ];
+
+    const replayInput = {
+      config: routingLevel,
+      seed: 123,
+      ticks: 180,
+      commandLog,
+      towerDefs: trafficSurgeTowerDefs,
+      enemyDefs: trafficSurgeEnemyDefs,
+      map: routingMap
+    };
+    const first = runReplay(replayInput);
+    const second = runReplay(replayInput);
+    const eventTypes = new Set(first.state.eventLog.events.map((event) => event.type));
+
+    expect(first.hash).toBe(second.hash);
+    expect(first.state).toEqual(second.state);
+    expect(eventTypes).toContain("enemy.routed");
+    expect(eventTypes).toContain("enemy.stalled");
+    expect(eventTypes).toContain("tower.fired");
   });
 
   it("rejects negative replay duration", () => {

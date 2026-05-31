@@ -8,11 +8,14 @@ import {
   createStartNextWaveCommand,
   type RunControls
 } from "./run-controller";
+import { RUN_SPEED_OPTIONS, type RunSpeed } from "./useGameRun";
 
 interface HudProps {
   readonly snapshot: SimSnapshot;
   readonly controls: RunControls;
+  readonly runSpeed: RunSpeed;
   readonly onCommand: (command: Command) => void;
+  readonly onRunSpeedChange: (runSpeed: RunSpeed) => void;
 }
 
 type MeterTone = "town-health" | "build-budget" | "pressure";
@@ -53,7 +56,7 @@ function Meter({ label, tooltip, value, tone }: MeterProps) {
   );
 }
 
-export function Hud({ snapshot, controls, onCommand }: HudProps) {
+export function Hud({ snapshot, controls, runSpeed, onCommand, onRunSpeedChange }: HudProps) {
   const startWaveButtonLabel = controls.canStartNextWave
     ? `Start ${controls.nextWaveLabel}`
     : controls.isAutoAdvancing
@@ -96,6 +99,20 @@ export function Hud({ snapshot, controls, onCommand }: HudProps) {
       </div>
 
       <div className="hud__controls" aria-label="Run controls">
+        <div className="speed-control" role="group" aria-label="Game speed">
+          {RUN_SPEED_OPTIONS.map((speed) => (
+            <button
+              key={speed}
+              type="button"
+              aria-pressed={runSpeed === speed}
+              onClick={() => {
+                onRunSpeedChange(speed);
+              }}
+            >
+              {speed === 0 ? "Pause" : `${String(speed)}x`}
+            </button>
+          ))}
+        </div>
         <span
           className="tooltip-anchor"
           data-tooltip="Start the next traffic wave when defenses are ready."
