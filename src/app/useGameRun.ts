@@ -41,6 +41,18 @@ export function calculateRunCatchUpTicks(
   );
 }
 
+export function calculateNextRunAdvanceTime(
+  lastAdvanceTime: number,
+  elapsedTicks: number,
+  runSpeed: RunSpeed
+) {
+  if (runSpeed === 0) {
+    return lastAdvanceTime;
+  }
+
+  return lastAdvanceTime + (elapsedTicks / runSpeed) * RUN_TICK_INTERVAL_MS;
+}
+
 function gameRunReducer(state: GameRun, action: GameRunAction): GameRun {
   switch (action.type) {
     case "advance":
@@ -71,10 +83,9 @@ export function useGameRun() {
     const intervalId = window.setInterval(() => {
       const now = window.performance.now();
       const lastAdvanceTime = lastAdvanceTimeRef.current ?? now;
-      const elapsedIntervalTicks = calculateElapsedIntervalTicks(lastAdvanceTime, now);
       const elapsedTicks = calculateRunCatchUpTicks(lastAdvanceTime, now, runSpeed);
 
-      lastAdvanceTimeRef.current = lastAdvanceTime + elapsedIntervalTicks * RUN_TICK_INTERVAL_MS;
+      lastAdvanceTimeRef.current = calculateNextRunAdvanceTime(lastAdvanceTime, elapsedTicks, runSpeed);
       dispatch({ type: "advance", ticks: elapsedTicks });
     }, RUN_TICK_INTERVAL_MS);
 
