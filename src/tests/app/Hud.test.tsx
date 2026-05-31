@@ -74,17 +74,38 @@ describe("Hud", () => {
     expect(html).not.toContain("title=");
   });
 
-  it("shows explicit start-wave button states after the wave starts and completes", () => {
+  it("shows explicit start-wave button states while running, between waves, and after completion", () => {
     const started = applyRunCommand(createInitialRun(12345), {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const completed = advanceRun(started, 42);
+    const recap = advanceRun(started, 92);
+    const finalWaveStarted = applyRunCommand(
+      advanceRun(
+        applyRunCommand(recap, {
+          type: "StartWave",
+          waveId: "wave-burst-surge"
+        }),
+        120
+      ),
+      {
+        type: "StartWave",
+        waveId: "wave-hot-shard"
+      }
+    );
+    const completed = advanceRun(finalWaveStarted, 120);
 
     const runningHtml = renderToString(
       <Hud
         snapshot={toRunSnapshot(started)}
         controls={getRunControls(started.game)}
+        onCommand={() => undefined}
+      />
+    );
+    const recapHtml = renderToString(
+      <Hud
+        snapshot={toRunSnapshot(recap)}
+        controls={getRunControls(recap.game)}
         onCommand={() => undefined}
       />
     );
@@ -98,6 +119,8 @@ describe("Hud", () => {
 
     expect(runningHtml).toContain("Normal Flow Running");
     expect(runningHtml).not.toContain("Start Normal Flow");
+    expect(recapHtml).toContain("Start Burst Surge");
+    expect(recapHtml).not.toContain("No Wave Available");
     expect(completedHtml).toContain("No Wave Available");
     expect(completedHtml).not.toContain("Start Complete");
   });
