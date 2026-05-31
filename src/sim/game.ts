@@ -14,6 +14,8 @@ type SnapshotTower = SimSnapshot["towers"][number];
 type SnapshotEnemy = SimSnapshot["enemies"][number];
 type SnapshotProjectile = SimSnapshot["projectiles"][number];
 
+const PATH_END_EPSILON = Number.EPSILON * 16;
+
 export interface GameOptions {
   readonly towerDefs?: readonly TowerDef[];
   readonly enemyDefs?: readonly EnemyDef[];
@@ -323,6 +325,10 @@ function updatePressure(state: GameState): GameState {
   return { ...state, meters: { ...state.meters, pressure: derivePressure(state.enemies) } };
 }
 
+function reachesPathEnd(traveledDistance: number, pathLength: number): boolean {
+  return traveledDistance + Math.max(1, pathLength) * PATH_END_EPSILON >= pathLength;
+}
+
 function moveEnemiesAndApplyLeaks(state: GameState): GameState {
   const wave = activeWave(state);
 
@@ -348,9 +354,10 @@ function moveEnemiesAndApplyLeaks(state: GameState): GameState {
       continue;
     }
 
-    const progress = Math.min(1, enemy.progress + enemyDef.speed / path.length);
+    const traveledDistance = enemy.progress * path.length + enemyDef.speed;
+    const progress = Math.min(1, traveledDistance / path.length);
 
-    if (progress >= 1) {
+    if (reachesPathEnd(traveledDistance, path.length)) {
       townHealth = Math.max(0, townHealth - enemyDef.leakDamage);
       eventLog = pushEvent(eventLog, {
         tick: state.tick,

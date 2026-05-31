@@ -7,7 +7,7 @@ import {
   tdContractFixtureTowerDefs,
   workerTowerDef
 } from "@content/td-contract-fixture";
-import type { Command, LevelConfig, TowerDef, WaveDef } from "@content/schemas";
+import type { Command, EnemyDef, LevelConfig, MapDef, TowerDef, WaveDef } from "@content/schemas";
 import { validateSimSnapshot } from "@content/schemas";
 import { createGame, step, toSnapshot, type GameState } from "@sim/game";
 
@@ -46,6 +46,23 @@ function createTwoWaveConfig(): LevelConfig {
     ...tdContractFixtureLevel,
     waves: [firstWave, followUpWave]
   };
+}
+
+function createDecimalMovementGame() {
+  const map: MapDef = {
+    ...tdContractFixtureMap,
+    paths: tdContractFixtureMap.paths.map((path) => ({ ...path, length: 1 }))
+  };
+  const enemyDefs: readonly EnemyDef[] = tdContractFixtureEnemyDefs.map((enemy) => ({
+    ...enemy,
+    speed: 0.1
+  }));
+
+  return createGame(tdContractFixtureLevel, 123, {
+    towerDefs: tdContractFixtureTowerDefs,
+    enemyDefs,
+    map
+  });
 }
 
 describe("TD simulator core", () => {
@@ -332,6 +349,23 @@ describe("TD simulator core", () => {
       pathId: "road-main",
       leakDamage: 1
     });
+  });
+
+  it("leaks enemies on schedule when decimal movement lands on the path end", () => {
+    const started = step(createDecimalMovementGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const afterLeak = advance(started, 10);
+
+    expect(afterLeak.enemies).not.toContainEqual(
+      expect.objectContaining({ id: "enemy:wave-normal-flow:0:0" })
+    );
+    expect(afterLeak.meters.townHealth).toBe(19);
+    expect(afterLeak.eventLog.events).toContainEqual(
+      expect.objectContaining({
+        tick: 10,
+        type: "enemy.leaked",
+        enemyInstanceId: "enemy:wave-normal-flow:0:0"
+      })
+    );
   });
 
   it("derives pressure from active enemies and near leaks", () => {
