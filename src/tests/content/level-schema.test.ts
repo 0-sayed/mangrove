@@ -197,6 +197,27 @@ describe("TD content and runtime schemas", () => {
     ).toBe(true);
 
     expect(validateSimEvent({ tick: 0, type: "wave.started", waveId: "wave-normal-flow" }).ok).toBe(true);
+    expect(
+      validateSimEvent({
+        tick: 1,
+        type: "enemy.spawned",
+        enemyInstanceId: "enemy:wave-normal-flow:0:0",
+        enemyId: "request-runner",
+        waveId: "wave-normal-flow",
+        pathId: "road-main"
+      }).ok
+    ).toBe(true);
+    expect(
+      validateSimEvent({
+        tick: 12,
+        type: "enemy.leaked",
+        enemyInstanceId: "enemy:wave-normal-flow:0:0",
+        enemyId: "request-runner",
+        waveId: "wave-normal-flow",
+        pathId: "road-main",
+        leakDamage: 1
+      }).ok
+    ).toBe(true);
     expect(validateSimEvent({ tick: 0, type: "tower.built", towerId: "worker-tower", padId: "pad-worker-a" }).ok).toBe(true);
     expect(validateSimEvent({ tick: 0, type: "build-intent.changed", towerId: "worker-tower" }).ok).toBe(true);
     expect(validateSimEvent({ tick: 0, type: "selection.changed", entityId: "tower-1" }).ok).toBe(true);

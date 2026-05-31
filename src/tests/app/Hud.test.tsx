@@ -79,7 +79,7 @@ describe("Hud", () => {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const completed = advanceRun(started, 42);
+    const completed = advanceRun(started, 52);
 
     const runningHtml = renderToString(
       <Hud

@@ -20,6 +20,10 @@ function gridToWorld(point: Pick<WorldPoint, "x" | "y">): WorldPoint {
   };
 }
 
+function distanceBetween(start: WorldPoint, end: WorldPoint): number {
+  return Math.hypot(end.x - start.x, end.y - start.y);
+}
+
 export function pathWorldPoints(map: MapDef, pathId: string): WorldPoint[] {
   const path = map.paths.find((candidate) => candidate.id === pathId);
 
@@ -34,6 +38,39 @@ export function pathWorldPoints(map: MapDef, pathId: string): WorldPoint[] {
   }
 
   return points;
+}
+
+export function enemyWorldPosition(map: MapDef, pathId: string, progress: number): WorldPoint {
+  const points = pathWorldPoints(map, pathId);
+  const clampedProgress = Math.min(1, Math.max(0, progress));
+  const segmentLengths = points
+    .slice(0, -1)
+    .map((point, index) => distanceBetween(point, points[index + 1] ?? point));
+  const totalLength = segmentLengths.reduce((total, length) => total + length, 0);
+  let remaining = clampedProgress * totalLength;
+
+  for (let index = 0; index < segmentLengths.length; index += 1) {
+    const segmentLength = segmentLengths[index] ?? 0;
+    const start = points[index];
+    const end = points[index + 1];
+
+    if (!start || !end) {
+      break;
+    }
+
+    if (remaining <= segmentLength || index === segmentLengths.length - 1) {
+      const ratio = segmentLength === 0 ? 0 : remaining / segmentLength;
+
+      return {
+        x: Math.round(start.x + (end.x - start.x) * ratio),
+        y: Math.round(start.y + (end.y - start.y) * ratio)
+      };
+    }
+
+    remaining -= segmentLength;
+  }
+
+  return points[points.length - 1] ?? { x: 0, y: 0 };
 }
 
 export function buildPadWorldPosition(map: MapDef, padId: string): WorldPoint {

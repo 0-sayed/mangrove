@@ -251,6 +251,29 @@ const SimEventSchema = Type.Union([
   Type.Object({ tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.started"), waveId: IdSchema }, { additionalProperties: false }),
   Type.Object({ tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.ended"), waveId: IdSchema }, { additionalProperties: false }),
   Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.spawned"),
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      waveId: IdSchema,
+      pathId: IdSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.leaked"),
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      waveId: IdSchema,
+      pathId: IdSchema,
+      leakDamage: PositiveIntegerSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
     { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("tower.built"), towerId: IdSchema, padId: IdSchema },
     { additionalProperties: false }
   ),

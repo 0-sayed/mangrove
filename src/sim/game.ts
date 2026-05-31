@@ -23,6 +23,14 @@ export interface GameOptions {
 type TowerDefById = Readonly<Record<string, TowerDef>>;
 type EnemyDefById = Readonly<Record<string, EnemyDef>>;
 
+interface ExpandedSpawn {
+  readonly elapsedTick: number;
+  readonly spawnIndex: number;
+  readonly memberIndex: number;
+  readonly enemyId: string;
+  readonly pathId: string;
+}
+
 interface AppliedCommand {
   readonly tick: number;
   readonly command: Command;
@@ -279,16 +287,150 @@ export function step(state: GameState, commands: readonly Command[] = []): GameS
     return applyCommand(recorded, command);
   }, state);
 
-  const nextState =
+  const waveState =
     commandState.phase === "wave" && commandState.activeWaveStartedTick !== undefined
-      ? maybeEndContractOnlyWave(commandState)
+      ? updatePressure(spawnDueEnemies(moveEnemiesAndApplyLeaks(commandState)))
       : commandState;
+  const nextState = maybeEndWave(waveState);
 
   return { ...nextState, tick: nextState.tick + 1 };
 }
 
 function activeWave(state: GameState): WaveDef | undefined {
   return state.config.waves.find((wave) => wave.id === state.activeWaveId);
+}
+
+function elapsedWaveTick(state: GameState): number {
+  return state.tick - (state.activeWaveStartedTick ?? state.tick);
+}
+
+function expandedWaveSpawns(wave: WaveDef): readonly ExpandedSpawn[] {
+  return wave.spawns.flatMap((spawn, spawnIndex) =>
+    Array.from({ length: spawn.count }, (_, memberIndex) => ({
+      elapsedTick: spawn.tick + memberIndex * spawn.intervalTicks,
+      spawnIndex,
+      memberIndex,
+      enemyId: spawn.enemyId,
+      pathId: spawn.pathId
+    }))
+  );
+}
+
+function enemyInstanceId(waveId: string, spawn: ExpandedSpawn): string {
+  return `enemy:${waveId}:${String(spawn.spawnIndex)}:${String(spawn.memberIndex)}`;
+}
+
+function derivePressure(enemies: readonly SnapshotEnemy[]): number {
+  const activeEnemies = enemies.filter((enemy) => enemy.status === "active");
+  const nearLeaks = activeEnemies.filter((enemy) => enemy.progress >= 0.75);
+  return activeEnemies.length + nearLeaks.length * 2;
+}
+
+function updatePressure(state: GameState): GameState {
+  return { ...state, meters: { ...state.meters, pressure: derivePressure(state.enemies) } };
+}
+
+function moveEnemiesAndApplyLeaks(state: GameState): GameState {
+  const wave = activeWave(state);
+
+  if (!wave) {
+    return state;
+  }
+
+  let townHealth = state.meters.townHealth;
+  let eventLog = state.eventLog;
+  const enemies: SnapshotEnemy[] = [];
+
+  for (const enemy of state.enemies) {
+    if (enemy.status !== "active") {
+      enemies.push(enemy);
+      continue;
+    }
+
+    const enemyDef = state.enemyDefsById[enemy.enemyId];
+    const path = state.map?.paths.find((candidate) => candidate.id === enemy.pathId);
+
+    if (!enemyDef || !path) {
+      enemies.push(enemy);
+      continue;
+    }
+
+    const progress = Math.min(1, enemy.progress + enemyDef.speed / path.length);
+
+    if (progress >= 1) {
+      townHealth = Math.max(0, townHealth - enemyDef.leakDamage);
+      eventLog = pushEvent(eventLog, {
+        tick: state.tick,
+        type: "enemy.leaked",
+        enemyInstanceId: enemy.id,
+        enemyId: enemy.enemyId,
+        waveId: wave.id,
+        pathId: enemy.pathId,
+        leakDamage: enemyDef.leakDamage
+      });
+      continue;
+    }
+
+    enemies.push({ ...enemy, progress });
+  }
+
+  return {
+    ...state,
+    meters: { ...state.meters, townHealth },
+    enemies,
+    eventLog
+  };
+}
+
+function spawnDueEnemies(state: GameState): GameState {
+  const wave = activeWave(state);
+
+  if (!wave) {
+    return state;
+  }
+
+  const elapsed = elapsedWaveTick(state);
+  const dueSpawns = expandedWaveSpawns(wave).filter((spawn) => spawn.elapsedTick === elapsed);
+
+  if (dueSpawns.length === 0) {
+    return state;
+  }
+
+  let eventLog = state.eventLog;
+  const enemies = [...state.enemies];
+
+  for (const spawn of dueSpawns) {
+    const enemyDef = state.enemyDefsById[spawn.enemyId];
+    const path = state.map?.paths.find((candidate) => candidate.id === spawn.pathId);
+
+    if (!enemyDef || !path) {
+      continue;
+    }
+
+    const id = enemyInstanceId(wave.id, spawn);
+    enemies.push({
+      id,
+      enemyId: spawn.enemyId,
+      pathId: spawn.pathId,
+      progress: 0,
+      health: enemyDef.maxHealth,
+      status: "active"
+    });
+    eventLog = pushEvent(eventLog, {
+      tick: state.tick,
+      type: "enemy.spawned",
+      enemyInstanceId: id,
+      enemyId: spawn.enemyId,
+      waveId: wave.id,
+      pathId: spawn.pathId
+    });
+  }
+
+  if (enemies.length === state.enemies.length) {
+    return state;
+  }
+
+  return { ...state, enemies, eventLog };
 }
 
 function nextIncompleteWave(state: GameState): WaveDef | undefined {
@@ -302,12 +444,12 @@ function hasCompletedAllWaves(
   return state.config.waves.every((wave) => completedWaveIds.includes(wave.id));
 }
 
-function maybeEndContractOnlyWave(state: GameState): GameState {
-  const elapsed = state.tick - (state.activeWaveStartedTick ?? state.tick);
+function maybeEndWave(state: GameState): GameState {
+  const elapsed = elapsedWaveTick(state);
   const wave = activeWave(state);
   const lastSpawnTick = finalSpawnElapsedTick(wave);
 
-  if (!wave || elapsed <= lastSpawnTick) {
+  if (!wave || elapsed <= lastSpawnTick || state.enemies.some((enemy) => enemy.status === "active")) {
     return state;
   }
 
@@ -322,7 +464,7 @@ function maybeEndContractOnlyWave(state: GameState): GameState {
     towerDefsById: state.towerDefsById,
     enemyDefsById: state.enemyDefsById,
     ...(state.map ? { map: state.map } : {}),
-    meters: { ...state.meters, buildBudget: state.meters.buildBudget + wave.budgetReward },
+    meters: { ...state.meters, buildBudget: state.meters.buildBudget + wave.budgetReward, pressure: 0 },
     towers: state.towers,
     enemies: state.enemies,
     projectiles: state.projectiles,

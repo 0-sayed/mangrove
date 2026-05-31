@@ -249,7 +249,7 @@ describe("TD simulator core", () => {
   it("allows building towers during recap between waves", () => {
     const twoWaveConfig = createTwoWaveConfig();
     const started = step(createFixtureGame(twoWaveConfig), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
-    const recap = advance(started, 41);
+    const recap = advance(started, 52);
     const built = step(recap, [{ type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" }]);
 
     expect(recap.phase).toBe("recap");
@@ -272,10 +272,84 @@ describe("TD simulator core", () => {
     }
 
     const started = step(createFixtureGame(twoWaveConfig), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
-    const recap = advance(started, 41);
+    const recap = advance(started, 52);
 
     expect(recap.phase).toBe("recap");
     expect(recap.meters.buildBudget).toBe(tdContractFixtureLevel.startingState.buildBudget + rewardedWave.budgetReward);
+  });
+
+  it("spawns enemies from the active wave schedule with deterministic ids", () => {
+    const started = step(createFixtureGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const beforeSecondSpawn = advance(started, 19);
+    const afterSecondSpawn = step(beforeSecondSpawn);
+
+    expect(started.enemies).toEqual([
+      {
+        id: "enemy:wave-normal-flow:0:0",
+        enemyId: "request-runner",
+        pathId: "road-main",
+        progress: 0,
+        health: 3,
+        status: "active"
+      }
+    ]);
+    expect(beforeSecondSpawn.enemies).toHaveLength(0);
+    expect(afterSecondSpawn.enemies.map((enemy) => enemy.id)).toEqual([
+      "enemy:wave-normal-flow:0:1"
+    ]);
+    expect(started.eventLog.events).toContainEqual({
+      tick: 0,
+      type: "enemy.spawned",
+      enemyInstanceId: "enemy:wave-normal-flow:0:0",
+      enemyId: "request-runner",
+      waveId: "wave-normal-flow",
+      pathId: "road-main"
+    });
+  });
+
+  it("moves active enemies by speed over path length each tick", () => {
+    const spawned = step(createFixtureGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const moved = step(spawned);
+
+    expect(spawned.enemies[0]?.progress).toBe(0);
+    expect(moved.enemies[0]?.progress).toBeCloseTo(1 / 12, 6);
+  });
+
+  it("leaks enemies at path end and applies town health damage", () => {
+    const started = step(createFixtureGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const afterLeak = advance(started, 12);
+
+    expect(afterLeak.enemies).not.toContainEqual(
+      expect.objectContaining({ id: "enemy:wave-normal-flow:0:0" })
+    );
+    expect(afterLeak.meters.townHealth).toBe(19);
+    expect(afterLeak.eventLog.events).toContainEqual({
+      tick: 12,
+      type: "enemy.leaked",
+      enemyInstanceId: "enemy:wave-normal-flow:0:0",
+      enemyId: "request-runner",
+      waveId: "wave-normal-flow",
+      pathId: "road-main",
+      leakDamage: 1
+    });
+  });
+
+  it("derives pressure from active enemies and near leaks", () => {
+    const started = step(createFixtureGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const active = advance(started, 2);
+    const nearLeak = advance(started, 11);
+
+    expect(active.meters.pressure).toBe(1);
+    expect(nearLeak.meters.pressure).toBe(3);
+    expect(toSnapshot(nearLeak).meters.pressure).toBe(3);
+  });
+
+  it("resets pressure when the wave has no active enemies", () => {
+    const started = step(createFixtureGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const completed = advance(started, 52);
+
+    expect(completed.phase).toBe("complete");
+    expect(completed.meters.pressure).toBe(0);
   });
 
   it("exposes range previews for the current build intent", () => {
@@ -286,23 +360,20 @@ describe("TD simulator core", () => {
     ]);
   });
 
-  it("ends contract-only final waves after the final expanded spawn tick", () => {
+  it("keeps waves active until final scheduled enemies have leaked", () => {
     const started = step(createFixtureGame(), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
-    const atFinalSpawnTick = advance(started, 39);
-    const afterFinalSpawnTick = step(atFinalSpawnTick);
-    const completed = step(afterFinalSpawnTick);
+    const afterFinalSpawn = advance(started, 40);
+    const completed = advance(afterFinalSpawn, 12);
 
-    expect(started.phase).toBe("wave");
-    expect(atFinalSpawnTick.tick).toBe(40);
-    expect(atFinalSpawnTick.phase).toBe("wave");
-    expect(afterFinalSpawnTick.tick).toBe(41);
-    expect(afterFinalSpawnTick.phase).toBe("wave");
+    expect(afterFinalSpawn.phase).toBe("wave");
+    expect(afterFinalSpawn.enemies.map((enemy) => enemy.id)).toContain("enemy:wave-normal-flow:0:2");
     expect(completed.phase).toBe("complete");
-    expect(completed.tick).toBe(42);
     expect(completed.completedWaveIds).toEqual(["wave-normal-flow"]);
     expect(completed.activeWaveId).toBeUndefined();
+    expect(completed.meters.buildBudget).toBe(70);
+    expect(completed.meters.townHealth).toBe(17);
     expect(completed.eventLog.events).toContainEqual({
-      tick: 41,
+      tick: completed.tick - 1,
       type: "wave.ended",
       waveId: "wave-normal-flow"
     });

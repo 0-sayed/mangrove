@@ -6,6 +6,7 @@ import {
   BATTLEFIELD_VIEW,
   battlefieldTowers,
   buildPadWorldPosition,
+  enemyWorldPosition,
   pathWorldPoints,
   towerBodyAnimationId
 } from "@game/battlefield-view";
@@ -87,6 +88,12 @@ describe("battlefield view model", () => {
       { x: 222, y: 154 },
       { x: 366, y: 154 }
     ]);
+  });
+
+  it("maps enemy progress to a world position along the authored path", () => {
+    expect(enemyWorldPosition(tdContractFixtureMap, "road-main", 0)).toEqual({ x: 150, y: 298 });
+    expect(enemyWorldPosition(tdContractFixtureMap, "road-main", 0.5)).toEqual({ x: 453, y: 306 });
+    expect(enemyWorldPosition(tdContractFixtureMap, "road-main", 1)).toEqual({ x: 726, y: 442 });
   });
 
   it("maps build pads to world positions", () => {

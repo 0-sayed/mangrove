@@ -85,12 +85,12 @@ describe("run controller", () => {
     ).toBe(true);
   });
 
-  it("reports auto-advance only while a contract-only wave is running", () => {
+  it("reports auto-advance only while a TD wave is running", () => {
     const started = applyRunCommand(createInitialRun(12345), {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const completed = advanceRun(started, 42);
+    const completed = advanceRun(started, 52);
 
     expect(getRunControls(started.game).isAutoAdvancing).toBe(true);
     expect(toRunSnapshot(completed).phase).toBe("complete");

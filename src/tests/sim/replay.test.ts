@@ -23,12 +23,44 @@ describe("TD sim replay", () => {
       { tick: 2, command: { type: "StartWave", waveId: "wave-normal-flow" } }
     ];
 
-    const first = runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 44, commandLog, ...replayOptions });
-    const second = runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 44, commandLog, ...replayOptions });
+    const first = runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 57, commandLog, ...replayOptions });
+    const second = runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 57, commandLog, ...replayOptions });
 
     expect(first.hash).toBe(second.hash);
     expect(first.state).toEqual(second.state);
     expect(first.state.phase).toBe("complete");
+    expect(first.state.meters.townHealth).toBe(17);
+  });
+
+  it("replays active enemy movement deterministically before leaks", () => {
+    const commandLog: readonly ReplayCommand[] = [
+      { tick: 1, command: { type: "StartWave", waveId: "wave-normal-flow" } }
+    ];
+
+    const first = runReplay({
+      config: tdContractFixtureLevel,
+      seed: 123,
+      ticks: 6,
+      commandLog,
+      ...replayOptions
+    });
+    const second = runReplay({
+      config: tdContractFixtureLevel,
+      seed: 123,
+      ticks: 6,
+      commandLog,
+      ...replayOptions
+    });
+
+    expect(first.hash).toBe(second.hash);
+    expect(first.state.enemies).toEqual(second.state.enemies);
+    expect(first.state.enemies[0]).toMatchObject({
+      id: "enemy:wave-normal-flow:0:0",
+      enemyId: "request-runner",
+      pathId: "road-main",
+      status: "active"
+    });
+    expect(first.state.enemies[0]?.progress).toBeCloseTo(1 / 3, 6);
   });
 
   it("keeps command order as part of deterministic input", () => {
