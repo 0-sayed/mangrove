@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { bootstrapLevel } from "@content/bootstrap-level";
 import {
   tdContractFixtureEnemyDefs,
   tdContractFixtureLevel,
@@ -10,8 +9,7 @@ import {
 import { validateEnemyDef, validateLevelConfig, validateMapDef, validateTowerDef } from "@content/schemas";
 
 describe("TD contract fixture", () => {
-  it("is valid active bootstrap content", () => {
-    expect(bootstrapLevel).toBe(tdContractFixtureLevel);
+  it("is valid contract fixture content", () => {
     expect(validateLevelConfig(tdContractFixtureLevel).ok).toBe(true);
     expect(validateMapDef(tdContractFixtureMap).ok).toBe(true);
 

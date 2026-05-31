@@ -3,10 +3,10 @@ import { ErrorBoundary } from "@app/ErrorBoundary";
 import { Hud } from "@app/Hud";
 import { useGameRun } from "@app/useGameRun";
 import {
-  tdContractFixtureLevel,
-  tdContractFixtureMap,
-  tdContractFixtureTowerDefs
-} from "@content/td-contract-fixture";
+  trafficSurgeLevel,
+  trafficSurgeMap,
+  trafficSurgeTowerDefs
+} from "@content/traffic-surge-level";
 import { GameCanvas } from "@game/GameCanvas";
 
 export function App() {
@@ -21,9 +21,9 @@ export function App() {
           onCommand={sendCommand}
         />
         <GameCanvas
-          level={tdContractFixtureLevel}
-          map={tdContractFixtureMap}
-          towerDefs={tdContractFixtureTowerDefs}
+          level={trafficSurgeLevel}
+          map={trafficSurgeMap}
+          towerDefs={trafficSurgeTowerDefs}
           snapshot={snapshot}
           onCommand={sendCommand}
         />
