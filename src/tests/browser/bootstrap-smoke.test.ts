@@ -9,22 +9,22 @@ const LANE_STROKE_RGBS = [
   { red: 47, green: 82, blue: 70 },
   { red: 50, green: 96, blue: 83 }
 ] as const;
-const QUEUE_SLOT_WORLD_POSITION = { x: 582, y: 442 };
-const QUEUE_HUB_COST = 40;
+const WORKER_PAD_WORLD_POSITION = { x: 438, y: 226 };
+const WORKER_TOWER_COST = 30;
 const LANE_OVERLAY_REGION = {
-  x: 170,
-  y: 386,
-  width: 880,
-  height: 128
+  x: 130,
+  y: 250,
+  width: 650,
+  height: 240
 } as const;
 const SPAWN_ASSET_REGION = {
-  x: 198,
-  y: 418,
+  x: 126,
+  y: 274,
   width: 48,
   height: 48
 } as const;
 const MIN_CANVAS_VIEWPORT_COVERAGE = 0.72;
-const OPENING_FLOW_ADVANCE_MS = 21_000;
+const NORMAL_FLOW_ADVANCE_MS = 5_000;
 
 interface Rgb {
   readonly red: number;
@@ -153,12 +153,12 @@ async function countPixelsAwayFromColors(
   );
 }
 
-async function readBudget(budgetMeter: Locator) {
+async function readBuildBudget(budgetMeter: Locator) {
   const text = await budgetMeter.textContent();
   const match = text?.match(/(?<budget>\d+)/);
 
   if (!match?.groups) {
-    throw new Error(`Expected a Budget meter, received ${text ?? "empty text"}.`);
+    throw new Error(`Expected a Build Budget meter, received ${text ?? "empty text"}.`);
   }
 
   return Number(match.groups.budget);
@@ -204,18 +204,22 @@ test("renders the playable shell and accepts browser battlefield input", async (
   await expect(page.getByLabel("Development diagnostics")).toHaveCount(0);
   await expect(page.getByLabel("Current objective")).toHaveCount(0);
   await expect(page.getByText("Trace the route")).toHaveCount(0);
-  await expect(page.getByLabel("Budget")).toHaveAttribute(
+  await expect(page.getByLabel("Build Budget")).toHaveAttribute(
     "data-tooltip",
-    /spent on defenses and upgrades/i
+    /spent on towers/i
   );
-  await page.getByLabel("Budget").hover();
-  await expect(page.getByLabel("Budget")).not.toHaveAttribute("title");
+  await page.getByLabel("Build Budget").hover();
+  await expect(page.getByLabel("Build Budget")).not.toHaveAttribute("title");
   await expect
-    .poll(() => page.getByLabel("Budget").evaluate((element) => getComputedStyle(element).zIndex))
+    .poll(() =>
+      page.getByLabel("Build Budget").evaluate((element) => getComputedStyle(element).zIndex)
+    )
     .toBe("30");
   await expect
     .poll(() =>
-      page.getByLabel("Budget").evaluate((element) => getComputedStyle(element, "::after").opacity)
+      page
+        .getByLabel("Build Budget")
+        .evaluate((element) => getComputedStyle(element, "::after").opacity)
     )
     .toBe("1");
 
@@ -237,26 +241,8 @@ test("renders the playable shell and accepts browser battlefield input", async (
       { timeout: 5_000 }
     )
     .toBeGreaterThan(80);
-  await expect(page.getByRole("button", { name: "Start Opening Flow" })).toBeEnabled();
-
-  await page.keyboard.press("Space");
-  await expect(page.getByLabel("Run phase")).toContainText("Wave");
-  await expect(page.getByLabel("Active wave")).toContainText("Opening Flow");
-  await expect(page.getByText("Watch pressure")).toHaveCount(0);
-  await expect(page.getByText("wave-opening-flow")).toHaveCount(0);
-
-  await page.clock.fastForward(OPENING_FLOW_ADVANCE_MS);
-  await expect
-    .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
-    .toBeGreaterThan(200);
-
-  await expect(page.getByLabel("Run phase")).toContainText("Build Phase", {
-    timeout: 5_000
-  });
-  await expect(page.getByText("Build defenses before Flood Wave")).toHaveCount(0);
-
-  const budgetMeter = page.getByLabel("Budget");
-  const budgetBeforePlacement = await readBudget(budgetMeter);
+  const buildBudgetMeter = page.getByLabel("Build Budget");
+  const budgetBeforePlacement = await readBuildBudget(buildBudgetMeter);
   const boundingBox = await battlefieldCanvas.boundingBox();
   expect(boundingBox).not.toBeNull();
 
@@ -265,11 +251,30 @@ test("renders the playable shell and accepts browser battlefield input", async (
   }
 
   await page.mouse.click(
-    boundingBox.x + (QUEUE_SLOT_WORLD_POSITION.x / BATTLEFIELD_WIDTH) * boundingBox.width,
-    boundingBox.y + (QUEUE_SLOT_WORLD_POSITION.y / BATTLEFIELD_HEIGHT) * boundingBox.height
+    boundingBox.x + (WORKER_PAD_WORLD_POSITION.x / BATTLEFIELD_WIDTH) * boundingBox.width,
+    boundingBox.y + (WORKER_PAD_WORLD_POSITION.y / BATTLEFIELD_HEIGHT) * boundingBox.height
   );
   await expect
-    .poll(() => readBudget(budgetMeter), { timeout: 5_000 })
-    .toBe(budgetBeforePlacement - QUEUE_HUB_COST);
+    .poll(() => readBuildBudget(buildBudgetMeter), { timeout: 5_000 })
+    .toBe(budgetBeforePlacement - WORKER_TOWER_COST);
+  await expect(page.getByRole("button", { name: "Build Worker Tower (30)" })).toBeDisabled();
+
+  await expect(page.getByRole("button", { name: "Start Normal Flow" })).toBeEnabled();
+
+  await page.keyboard.press("Space");
+  await expect(page.getByLabel("Run phase")).toContainText("Wave");
+  await expect(page.getByLabel("Active wave")).toContainText("Normal Flow");
+  await expect(page.getByText("Watch pressure")).toHaveCount(0);
+  await expect(page.getByText("wave-normal-flow")).toHaveCount(0);
+
+  await page.clock.fastForward(NORMAL_FLOW_ADVANCE_MS);
+  await expect
+    .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
+    .toBeGreaterThan(40);
+
+  await expect(page.getByLabel("Run phase")).toContainText("Complete", {
+    timeout: 5_000
+  });
+  await expect(page.getByText("Build defenses before Flood Wave")).toHaveCount(0);
   expect(consoleErrors).toEqual([]);
 });

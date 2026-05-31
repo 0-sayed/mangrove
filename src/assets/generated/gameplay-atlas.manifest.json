@@ -20,64 +20,64 @@
     { "id": "map-placement-preview-valid", "category": "map", "from": 31, "to": 33, "frames": 3 },
     { "id": "map-placement-preview-invalid", "category": "map", "from": 34, "to": 36, "frames": 3 },
     {
-      "id": "building-api-gate-flowing",
+      "id": "building-ingress-tower-flowing",
       "category": "building",
       "from": 37,
       "to": 40,
       "frames": 4
     },
     {
-      "id": "building-api-gate-saturated",
+      "id": "building-ingress-tower-saturated",
       "category": "building",
       "from": 41,
       "to": 44,
       "frames": 4
     },
     {
-      "id": "building-api-gate-dropping",
+      "id": "building-ingress-tower-dropping",
       "category": "building",
       "from": 45,
       "to": 48,
       "frames": 4
     },
     {
-      "id": "building-worker-yard-idle",
+      "id": "building-worker-tower-idle",
       "category": "building",
       "from": 49,
       "to": 51,
       "frames": 3
     },
     {
-      "id": "building-worker-yard-working",
+      "id": "building-worker-tower-working",
       "category": "building",
       "from": 52,
       "to": 55,
       "frames": 4
     },
     {
-      "id": "building-worker-yard-saturated",
+      "id": "building-worker-tower-saturated",
       "category": "building",
       "from": 56,
       "to": 59,
       "frames": 4
     },
-    { "id": "building-queue-hub-empty", "category": "building", "from": 60, "to": 62, "frames": 3 },
+    { "id": "building-queue-tower-empty", "category": "building", "from": 60, "to": 62, "frames": 3 },
     {
-      "id": "building-queue-hub-filling",
+      "id": "building-queue-tower-filling",
       "category": "building",
       "from": 63,
       "to": 66,
       "frames": 4
     },
     {
-      "id": "building-queue-hub-backing-up",
+      "id": "building-queue-tower-backing-up",
       "category": "building",
       "from": 67,
       "to": 70,
       "frames": 4
     },
     {
-      "id": "building-queue-hub-overflowing",
+      "id": "building-queue-tower-overflowing",
       "category": "building",
       "from": 71,
       "to": 74,
@@ -97,13 +97,13 @@
     { "id": "effect-timeout-expired", "category": "effect", "from": 121, "to": 126, "frames": 6 },
     { "id": "effect-overflow", "category": "effect", "from": 127, "to": 132, "frames": 6 },
     {
-      "id": "effect-backlog-saturation",
+      "id": "effect-pressure-saturation",
       "category": "effect",
       "from": 133,
       "to": 136,
       "frames": 4
     },
-    { "id": "effect-trust-loss", "category": "effect", "from": 137, "to": 140, "frames": 4 },
+    { "id": "effect-town-health-loss", "category": "effect", "from": 137, "to": 140, "frames": 4 },
     { "id": "effect-budget-gain", "category": "effect", "from": 141, "to": 144, "frames": 4 },
     { "id": "effect-wave-start", "category": "effect", "from": 145, "to": 150, "frames": 6 },
     { "id": "effect-wave-end", "category": "effect", "from": 151, "to": 156, "frames": 6 },
@@ -112,18 +112,18 @@
     { "id": "badge-worker", "category": "badge", "from": 162, "to": 164, "frames": 3 },
     { "id": "badge-storage-exit", "category": "badge", "from": 165, "to": 167, "frames": 3 },
     { "id": "ui-frame-hud", "category": "ui", "from": 168, "to": 169, "frames": 2 },
-    { "id": "ui-icon-trust", "category": "ui", "from": 170, "to": 172, "frames": 3 },
+    { "id": "ui-icon-town-health", "category": "ui", "from": 170, "to": 172, "frames": 3 },
     { "id": "ui-icon-budget", "category": "ui", "from": 173, "to": 175, "frames": 3 },
-    { "id": "ui-icon-backlog", "category": "ui", "from": 176, "to": 178, "frames": 3 },
-    { "id": "ui-meter-trust", "category": "ui", "from": 179, "to": 181, "frames": 3 },
+    { "id": "ui-icon-pressure", "category": "ui", "from": 176, "to": 178, "frames": 3 },
+    { "id": "ui-meter-town-health", "category": "ui", "from": 179, "to": 181, "frames": 3 },
     { "id": "ui-meter-budget", "category": "ui", "from": 182, "to": 184, "frames": 3 },
-    { "id": "ui-meter-backlog", "category": "ui", "from": 185, "to": 187, "frames": 3 },
+    { "id": "ui-meter-pressure", "category": "ui", "from": 185, "to": 187, "frames": 3 },
     { "id": "ui-button-start-wave", "category": "ui", "from": 188, "to": 190, "frames": 3 },
     { "id": "ui-button-build-queue", "category": "ui", "from": 191, "to": 193, "frames": 3 },
     { "id": "ui-control-worker-count", "category": "ui", "from": 194, "to": 196, "frames": 3 },
     { "id": "ui-recap-delivered", "category": "ui", "from": 197, "to": 199, "frames": 3 },
     { "id": "ui-recap-dropped", "category": "ui", "from": 200, "to": 202, "frames": 3 },
-    { "id": "ui-recap-backlog-peak", "category": "ui", "from": 203, "to": 205, "frames": 3 },
+    { "id": "ui-recap-pressure-peak", "category": "ui", "from": 203, "to": 205, "frames": 3 },
     {
       "id": "building-validation-gate-passing",
       "category": "building",
@@ -524,9 +524,9 @@
     { "id": "effect-perfect-wave", "category": "effect", "from": 701, "to": 706, "frames": 6 },
     { "id": "effect-near-miss-timeout", "category": "effect", "from": 707, "to": 712, "frames": 6 },
     { "id": "effect-system-recovered", "category": "effect", "from": 713, "to": 718, "frames": 6 },
-    { "id": "effect-crowd-trust-cheer", "category": "effect", "from": 719, "to": 724, "frames": 6 },
+    { "id": "effect-crowd-town-health-cheer", "category": "effect", "from": 719, "to": 724, "frames": 6 },
     {
-      "id": "effect-critical-trust-warning",
+      "id": "effect-critical-town-health-warning",
       "category": "effect",
       "from": 725,
       "to": 730,

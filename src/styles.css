@@ -112,15 +112,15 @@ h1 {
   font-size: 1.1rem;
 }
 
-.meter--trust strong {
+.meter--town-health strong {
   color: #f8f5ec;
 }
 
-.meter--budget strong {
+.meter--build-budget strong {
   color: #f5c76b;
 }
 
-.meter--backlog strong {
+.meter--pressure strong {
   color: #9dd7ff;
 }
 

@@ -1,40 +1,27 @@
 import type {
-  BuildingDef,
   Command,
+  EnemyDef,
   LevelConfig,
-  MapMetadata,
+  MapDef,
   SimSnapshot,
+  TowerDef,
   WaveDef
 } from "@content/schemas";
 import { createEventLog, type EventLog, pushEvent } from "@sim/event-log";
 
 type SimPhase = SimSnapshot["phase"];
-type SnapshotBuilding = SimSnapshot["buildings"][number];
-type SnapshotMessage = SimSnapshot["messages"][number];
-type LanePressure = SimSnapshot["lanePressure"][number];
+type SnapshotTower = SimSnapshot["towers"][number];
+type SnapshotEnemy = SimSnapshot["enemies"][number];
+type SnapshotProjectile = SimSnapshot["projectiles"][number];
 
 export interface GameOptions {
-  readonly buildingDefs?: readonly BuildingDef[];
-  readonly map?: MapMetadata;
+  readonly towerDefs?: readonly TowerDef[];
+  readonly enemyDefs?: readonly EnemyDef[];
+  readonly map?: MapDef;
 }
 
-type BuildingDefById = Readonly<Record<string, BuildingDef>>;
-
-interface LifecycleMessage extends SnapshotMessage {
-  readonly acceptedTick?: number;
-  readonly processingRemainingTicks?: number;
-}
-
-function withoutProcessingProgress(message: LifecycleMessage): LifecycleMessage {
-  return {
-    id: message.id,
-    type: message.type,
-    status: message.status,
-    pathId: message.pathId,
-    ageTicks: message.ageTicks,
-    ...(message.acceptedTick === undefined ? {} : { acceptedTick: message.acceptedTick })
-  };
-}
+type TowerDefById = Readonly<Record<string, TowerDef>>;
+type EnemyDefById = Readonly<Record<string, EnemyDef>>;
 
 interface AppliedCommand {
   readonly tick: number;
@@ -50,78 +37,78 @@ export interface GameState {
   readonly phase: SimPhase;
   readonly activeWaveId?: string;
   readonly activeWaveStartedTick?: number;
-  readonly buildingDefsById: BuildingDefById;
-  readonly map?: MapMetadata;
+  readonly towerDefsById: TowerDefById;
+  readonly enemyDefsById: EnemyDefById;
+  readonly map?: MapDef;
   readonly meters: SimSnapshot["meters"];
-  readonly workerCount: number;
-  readonly buildings: readonly SnapshotBuilding[];
-  readonly messages: readonly LifecycleMessage[];
-  readonly lanePressure: readonly LanePressure[];
+  readonly towers: readonly SnapshotTower[];
+  readonly enemies: readonly SnapshotEnemy[];
+  readonly projectiles: readonly SnapshotProjectile[];
   readonly alerts: readonly string[];
+  readonly buildIntent: SimSnapshot["buildIntent"];
+  readonly selection: SimSnapshot["selection"];
+  readonly hover: SimSnapshot["hover"];
   readonly completedWaveIds: readonly string[];
   readonly commandHistory: readonly AppliedCommand[];
   readonly eventLog: EventLog;
 }
 
-function indexBuildingDefs(buildingDefs: readonly BuildingDef[] | undefined): BuildingDefById {
-  return Object.fromEntries((buildingDefs ?? []).map((def) => [def.id, def]));
+function indexTowerDefs(towerDefs: readonly TowerDef[] | undefined): TowerDefById {
+  return Object.fromEntries((towerDefs ?? []).map((def) => [def.id, def]));
 }
 
-function cloneWave(wave: WaveDef): WaveDef {
-  return {
-    ...wave,
-    spawnSchedule: wave.spawnSchedule.map((item) => ({ ...item })),
-    messageTypes: [...wave.messageTypes]
-  };
+function indexEnemyDefs(enemyDefs: readonly EnemyDef[] | undefined): EnemyDefById {
+  return Object.fromEntries((enemyDefs ?? []).map((def) => [def.id, def]));
 }
 
 function cloneLevelConfig(config: LevelConfig): LevelConfig {
   return {
     ...config,
     startingState: { ...config.startingState },
-    startingBuildings: config.startingBuildings.map((building) => ({ ...building })),
-    availableBuildings: [...config.availableBuildings],
-    ...(config.unlocks
-      ? {
-          unlocks: config.unlocks.map((unlock) => ({
-            ...unlock,
-            ...(unlock.buildingIds ? { buildingIds: [...unlock.buildingIds] } : {}),
-            ...(unlock.commandTypes ? { commandTypes: [...unlock.commandTypes] } : {})
-          }))
-        }
-      : {}),
-    waves: config.waves.map(cloneWave),
-    winCondition: { ...config.winCondition },
-    lossCondition: { ...config.lossCondition },
-    recaps: config.recaps.map((recap) => ({
-      ...recap,
-      lines: [...recap.lines]
-    }))
+    availableTowerIds: [...config.availableTowerIds],
+    waves: config.waves.map((wave) => ({
+      ...wave,
+      preview: { ...wave.preview, enemyKinds: [...wave.preview.enemyKinds] },
+      spawns: wave.spawns.map((spawn) => ({ ...spawn }))
+    })),
+    recapLaws: config.recapLaws.map((law) => ({ ...law }))
   };
 }
 
-function cloneMapMetadata(map: MapMetadata): MapMetadata {
+function cloneMapDef(map: MapDef): MapDef {
   return {
     ...map,
+    size: { ...map.size },
     paths: map.paths.map((path) => ({
       ...path,
-      nodeIds: [...path.nodeIds]
+      points: path.points.map((point) => ({ ...point }))
     })),
-    buildSlots: map.buildSlots.map((slot) => ({ ...slot })),
-    spawns: map.spawns.map((spawn) => ({ ...spawn })),
-    exits: map.exits.map((exit) => ({ ...exit }))
+    buildPads: map.buildPads.map((pad) => ({
+      ...pad,
+      allowedTowerKinds: [...pad.allowedTowerKinds]
+    })),
+    portals: map.portals.map((portal) => ({ ...portal })),
+    cores: map.cores.map((core) => ({ ...core }))
   };
 }
 
-function cloneBuildingDefs(
-  buildingDefs: readonly BuildingDef[] | undefined
-): readonly BuildingDef[] {
-  return (buildingDefs ?? []).map((def) => ({
+function cloneTowerDefs(towerDefs: readonly TowerDef[] | undefined): readonly TowerDef[] {
+  return (towerDefs ?? []).map((def) => ({
     ...def,
-    allowedSlots: [...def.allowedSlots],
-    stats: { ...def.stats },
-    visibleStates: [...def.visibleStates]
+    targets: [...def.targets],
+    combat: { ...def.combat }
   }));
+}
+
+function cloneEnemyDefs(enemyDefs: readonly EnemyDef[] | undefined): readonly EnemyDef[] {
+  return (enemyDefs ?? []).map((def) => ({
+    ...def,
+    traits: [...def.traits]
+  }));
+}
+
+function cloneCommand(command: Command): Command {
+  return { ...command };
 }
 
 export function createGame(
@@ -134,7 +121,7 @@ export function createGame(
   }
 
   const configSnapshot = cloneLevelConfig(config);
-  const mapSnapshot = options.map ? cloneMapMetadata(options.map) : undefined;
+  const mapSnapshot = options.map ? cloneMapDef(options.map) : undefined;
 
   return {
     config: configSnapshot,
@@ -143,181 +130,67 @@ export function createGame(
     seed,
     tick: 0,
     phase: "setup",
-    buildingDefsById: indexBuildingDefs(cloneBuildingDefs(options.buildingDefs)),
+    towerDefsById: indexTowerDefs(cloneTowerDefs(options.towerDefs)),
+    enemyDefsById: indexEnemyDefs(cloneEnemyDefs(options.enemyDefs)),
     ...(mapSnapshot ? { map: mapSnapshot } : {}),
-    meters: {
-      trust: configSnapshot.startingState.trust,
-      budget: configSnapshot.startingState.budget,
-      backlog: configSnapshot.startingState.backlog
-    },
-    workerCount: configSnapshot.startingState.workerCount,
-    buildings: configSnapshot.startingBuildings.map((building, index) => ({
-      id: `${building.defId}@${building.slotId}#${String(index)}`,
-      defId: building.defId,
-      slotId: building.slotId,
-      state: "idle"
-    })),
-    messages: [],
-    lanePressure: [],
+    meters: { ...configSnapshot.startingState },
+    towers: [],
+    enemies: [],
+    projectiles: [],
     alerts: [],
+    buildIntent: {},
+    selection: {},
+    hover: {},
     completedWaveIds: [],
     commandHistory: [],
     eventLog: createEventLog(200)
   };
 }
 
-function findBuildingByRole(
-  state: GameState,
-  role: BuildingDef["role"]
-): SnapshotBuilding | undefined {
-  return state.buildings.find((building) => state.buildingDefsById[building.defId]?.role === role);
-}
+function buildTower(state: GameState, command: Extract<Command, { type: "BuildTower" }>): GameState {
+  const towerDef = state.towerDefsById[command.towerId];
+  const pad = state.map?.buildPads.find((candidate) => candidate.id === command.padId);
 
-function getBuildingStat(
-  state: GameState,
-  building: SnapshotBuilding | undefined,
-  stat: string
-): number {
-  if (!building) {
-    throw new Error("Building definitions are required before running the message lifecycle.");
-  }
-
-  const def = state.buildingDefsById[building.defId];
-  const value = def?.stats[stat];
-
-  if (value === undefined) {
-    throw new Error("Building definitions are required before running the message lifecycle.");
-  }
-
-  return value;
-}
-
-function mainPathId(state: GameState): string {
-  const path = state.map?.paths[0];
-
-  if (!path) {
-    throw new Error("Map metadata is required before running the message lifecycle.");
-  }
-
-  return path.id;
-}
-
-function canSpend(state: GameState, amount: number): boolean {
-  return state.meters.budget >= amount;
-}
-
-function findBuildSlot(state: GameState, slotId: string) {
-  return state.map?.buildSlots.find((slot) => slot.id === slotId);
-}
-
-function placeBuilding(state: GameState, command: Extract<Command, { type: "PlaceBuilding" }>) {
   if (
-    state.phase !== "recap" ||
-    !isCommandUnlocked(state, command.type) ||
-    !isBuildingUnlocked(state, command.buildingId) ||
-    !state.config.availableBuildings.includes(command.buildingId)
+    state.phase !== "setup" ||
+    !towerDef ||
+    !pad ||
+    !state.config.availableTowerIds.includes(command.towerId) ||
+    !pad.allowedTowerKinds.includes(towerDef.kind) ||
+    state.towers.some((tower) => tower.padId === command.padId) ||
+    state.meters.buildBudget < towerDef.cost
   ) {
     return state;
   }
-
-  const def = state.buildingDefsById[command.buildingId];
-  const slot = findBuildSlot(state, command.slotId);
-
-  if (
-    !def ||
-    slot?.role !== def.role ||
-    !def.allowedSlots.includes(command.slotId) ||
-    state.buildings.some((building) => building.slotId === command.slotId) ||
-    state.buildings.some((building) => building.defId === def.id) ||
-    !canSpend(state, def.cost)
-  ) {
-    return state;
-  }
-
-  const nextState = changeMeter(state, "budget", -def.cost);
-  const building = {
-    id: `${command.buildingId}@${command.slotId}#${String(nextState.buildings.length)}`,
-    defId: command.buildingId,
-    slotId: command.slotId,
-    state: "idle"
-  } satisfies SnapshotBuilding;
 
   return {
-    ...nextState,
-    buildings: [...nextState.buildings, building],
-    eventLog: pushEvent(nextState.eventLog, {
+    ...state,
+    meters: {
+      ...state.meters,
+      buildBudget: state.meters.buildBudget - towerDef.cost
+    },
+    towers: [
+      ...state.towers,
+      {
+        id: `${command.towerId}@${command.padId}#${String(state.towers.length)}`,
+        towerId: command.towerId,
+        padId: command.padId,
+        cooldownRemainingTicks: 0
+      }
+    ],
+    eventLog: pushEvent(state.eventLog, {
       tick: state.tick,
-      type: "building.placed",
-      buildingId: command.buildingId,
-      slotId: command.slotId
+      type: "tower.built",
+      towerId: command.towerId,
+      padId: command.padId
     })
   };
 }
 
-function setWorkerCount(
-  state: GameState,
-  command: Extract<Command, { type: "SetWorkerCount" }>
-): GameState {
-  if (
-    state.phase !== "recap" ||
-    state.messages.some(isActiveMessage) ||
-    !Number.isInteger(command.count) ||
-    !isCommandUnlocked(state, "SetWorkerCount")
-  ) {
-    return state;
-  }
+function startWave(state: GameState, command: Extract<Command, { type: "StartWave" }>): GameState {
+  const wave = nextIncompleteWave(state);
 
-  const workerYard = findBuildingByRole(state, "worker-yard");
-  if (!workerYard || command.count <= state.workerCount) {
-    return state;
-  }
-
-  const maxWorkers = getBuildingStat(state, workerYard, "maxWorkers");
-  const upgradeCost = getBuildingStat(state, workerYard, "workerCountUpgradeCost");
-  const addedWorkers = command.count - state.workerCount;
-  const totalUpgradeCost = upgradeCost * addedWorkers;
-
-  if (command.count > maxWorkers || !canSpend(state, totalUpgradeCost)) {
-    return state;
-  }
-
-  const nextState = changeMeter(state, "budget", -totalUpgradeCost);
-
-  return {
-    ...nextState,
-    workerCount: command.count,
-    eventLog: pushEvent(nextState.eventLog, {
-      tick: state.tick,
-      type: "worker-count.changed",
-      count: command.count
-    })
-  };
-}
-
-function isRecordableCommand(command: Command): boolean {
-  return (
-    command.type !== "SetWorkerCount" || (Number.isInteger(command.count) && command.count >= 1)
-  );
-}
-
-function applyCommand(state: GameState, command: Command): GameState {
-  if (command.type === "PlaceBuilding") {
-    return placeBuilding(state, command);
-  }
-
-  if (command.type === "SetWorkerCount") {
-    return setWorkerCount(state, command);
-  }
-
-  const wave = state.config.waves.find((candidate) => candidate.id === command.waveId);
-  const nextWave = nextIncompleteWave(state);
-
-  if (
-    !wave ||
-    nextWave?.id !== wave.id ||
-    (state.phase !== "setup" && state.phase !== "recap") ||
-    (state.phase === "recap" && state.messages.some(isActiveMessage))
-  ) {
+  if (wave?.id !== command.waveId || (state.phase !== "setup" && state.phase !== "recap")) {
     return state;
   }
 
@@ -334,47 +207,84 @@ function applyCommand(state: GameState, command: Command): GameState {
   };
 }
 
-function isCommandUnlocked(
-  state: GameState,
-  commandType: "PlaceBuilding" | "SetWorkerCount"
-): boolean {
-  const unlocks = state.config.unlocks;
-
-  if (!unlocks) {
-    return true;
+function applyCommand(state: GameState, command: Command): GameState {
+  switch (command.type) {
+    case "BuildTower":
+      return buildTower(state, command);
+    case "SetBuildIntent":
+      return {
+        ...state,
+        buildIntent: { towerId: command.towerId },
+        eventLog: pushEvent(state.eventLog, {
+          tick: state.tick,
+          type: "build-intent.changed",
+          towerId: command.towerId
+        })
+      };
+    case "ClearBuildIntent":
+      return {
+        ...state,
+        buildIntent: {},
+        eventLog: pushEvent(state.eventLog, { tick: state.tick, type: "build-intent.changed" })
+      };
+    case "SelectEntity":
+      return {
+        ...state,
+        selection: { entityId: command.entityId },
+        eventLog: pushEvent(state.eventLog, {
+          tick: state.tick,
+          type: "selection.changed",
+          entityId: command.entityId
+        })
+      };
+    case "ClearSelection":
+      return {
+        ...state,
+        selection: {},
+        eventLog: pushEvent(state.eventLog, { tick: state.tick, type: "selection.changed" })
+      };
+    case "SetHover":
+      return {
+        ...state,
+        hover: { entityId: command.entityId },
+        eventLog: pushEvent(state.eventLog, {
+          tick: state.tick,
+          type: "hover.changed",
+          entityId: command.entityId
+        })
+      };
+    case "ClearHover":
+      return {
+        ...state,
+        hover: {},
+        eventLog: pushEvent(state.eventLog, { tick: state.tick, type: "hover.changed" })
+      };
+    case "StartWave":
+      return startWave(state, command);
   }
-
-  const isRestricted = unlocks.some((unlock) => unlock.commandTypes?.includes(commandType));
-
-  if (!isRestricted) {
-    return true;
-  }
-
-  return unlocks.some(
-    (unlock) =>
-      state.completedWaveIds.includes(unlock.afterWaveId) &&
-      unlock.commandTypes?.includes(commandType)
-  );
 }
 
-function isBuildingUnlocked(state: GameState, buildingId: string): boolean {
-  const unlocks = state.config.unlocks;
+export function step(state: GameState, commands: readonly Command[] = []): GameState {
+  const commandState = commands.reduce((current, command) => {
+    const recorded = {
+      ...current,
+      commandHistory: [...current.commandHistory, { tick: current.tick, command: cloneCommand(command) }],
+      eventLog: pushEvent(current.eventLog, {
+        tick: current.tick,
+        type: "command.received",
+        commandType: command.type
+      })
+    };
 
-  if (!unlocks) {
-    return true;
-  }
+    return applyCommand(recorded, command);
+  }, state);
 
-  const isRestricted = unlocks.some((unlock) => unlock.buildingIds?.includes(buildingId));
+  const nextState =
+    commandState.phase === "wave" && commandState.activeWaveStartedTick !== undefined
+      ? maybeEndContractOnlyWave(commandState)
+      : commandState;
 
-  if (!isRestricted) {
-    return true;
-  }
-
-  return unlocks.some(
-    (unlock) =>
-      state.completedWaveIds.includes(unlock.afterWaveId) &&
-      unlock.buildingIds?.includes(buildingId)
-  );
+  return { ...nextState, tick: nextState.tick + 1 };
 }
 
 function activeWave(state: GameState): WaveDef | undefined {
@@ -385,12 +295,6 @@ function nextIncompleteWave(state: GameState): WaveDef | undefined {
   return state.config.waves.find((wave) => !state.completedWaveIds.includes(wave.id));
 }
 
-function isFinalWave(state: GameState, waveId: string): boolean {
-  const finalWave = state.config.waves.at(-1);
-
-  return finalWave?.id === waveId;
-}
-
 function hasCompletedAllWaves(
   state: GameState,
   completedWaveIds: readonly string[] = state.completedWaveIds
@@ -398,368 +302,36 @@ function hasCompletedAllWaves(
   return state.config.waves.every((wave) => completedWaveIds.includes(wave.id));
 }
 
-function waveElapsedTick(state: GameState): number | undefined {
-  return state.activeWaveStartedTick === undefined
-    ? undefined
-    : state.tick - state.activeWaveStartedTick;
-}
-
-function isActiveMessage(message: LifecycleMessage): boolean {
-  return (
-    message.status === "accepted" || message.status === "queued" || message.status === "processing"
-  );
-}
-
-function changeMeter(state: GameState, meter: keyof GameState["meters"], delta: number): GameState {
-  const previousValue = state.meters[meter];
-  const nextValue = Math.max(0, previousValue + delta);
-  const actualDelta = nextValue - previousValue;
-
-  if (actualDelta === 0) {
-    return state;
-  }
-
-  return {
-    ...state,
-    meters: { ...state.meters, [meter]: nextValue },
-    eventLog: pushEvent(state.eventLog, {
-      tick: state.tick,
-      type: "meter.changed",
-      meter,
-      delta: actualDelta,
-      value: nextValue
-    })
-  };
-}
-
-function nextMessageId(state: GameState, waveId: string, offset: number): string {
-  return `${waveId}-message-${String(state.messages.length + offset + 1)}`;
-}
-
-function spawnMessages(state: GameState): GameState {
+function maybeEndContractOnlyWave(state: GameState): GameState {
+  const elapsed = state.tick - (state.activeWaveStartedTick ?? state.tick);
   const wave = activeWave(state);
-  const elapsed = waveElapsedTick(state);
+  const lastSpawnTick = finalSpawnElapsedTick(wave);
 
-  if (!wave || elapsed === undefined) {
+  if (!wave || elapsed <= lastSpawnTick) {
     return state;
   }
 
-  const scheduled = wave.spawnSchedule.filter((item) => item.tick === elapsed);
-  if (scheduled.length === 0) {
-    return state;
-  }
-
-  let messageOffset = 0;
-  let eventLog = state.eventLog;
-  const spawned: LifecycleMessage[] = [];
-
-  for (const item of scheduled) {
-    for (let index = 0; index < item.count; index += 1) {
-      const id = nextMessageId(state, wave.id, messageOffset);
-      messageOffset += 1;
-      spawned.push({
-        id,
-        type: item.messageType,
-        status: "spawned",
-        pathId: mainPathId(state),
-        ageTicks: 0
-      });
-      eventLog = pushEvent(eventLog, {
-        tick: state.tick,
-        type: "message.spawned",
-        messageId: id,
-        messageType: item.messageType
-      });
-    }
-  }
-
+  const completedWaveIds = [...state.completedWaveIds, wave.id];
   return {
-    ...state,
-    messages: [...state.messages, ...spawned],
-    eventLog
-  };
-}
-
-function acceptAndRouteMessages(state: GameState): GameState {
-  const queue = findBuildingByRole(state, "queue-hub");
-  let eventLog = state.eventLog;
-  const messages = state.messages.map((message): LifecycleMessage => {
-    if (message.status !== "spawned") {
-      return message;
-    }
-
-    const accepted = {
-      ...message,
-      status: queue ? "queued" : "accepted",
-      acceptedTick: state.tick
-    } satisfies LifecycleMessage;
-
-    eventLog = pushEvent(eventLog, {
-      tick: state.tick,
-      type: "message.accepted",
-      messageId: message.id
-    });
-
-    if (queue) {
-      eventLog = pushEvent(eventLog, {
-        tick: state.tick,
-        type: "message.queued",
-        messageId: message.id,
-        queueId: queue.id
-      });
-    }
-
-    return accepted;
-  });
-
-  return { ...state, messages, eventLog };
-}
-
-function dropMessagesOverCapacity(
-  state: GameState,
-  status: LifecycleMessage["status"],
-  capacity: number,
-  reason: "direct-handoff-overflow" | "queue-overflow"
-): GameState {
-  const eligibleIndexes = state.messages.flatMap((message, index) =>
-    message.status === status ? [index] : []
-  );
-  const overflowCount = eligibleIndexes.length - capacity;
-
-  if (overflowCount <= 0) {
-    return state;
-  }
-
-  const dropIndexes = eligibleIndexes.slice(-overflowCount).reverse();
-  const dropIndexSet = new Set(dropIndexes);
-  let nextState = state;
-
-  for (const index of dropIndexes) {
-    const message = state.messages[index];
-
-    if (!message) {
-      continue;
-    }
-
-    nextState = {
-      ...nextState,
-      eventLog: pushEvent(nextState.eventLog, {
-        tick: state.tick,
-        type: "message.dropped",
-        messageId: message.id,
-        reason
-      })
-    };
-    nextState = changeMeter(nextState, "trust", -3);
-  }
-
-  return {
-    ...nextState,
-    messages: state.messages.map(
-      (message, index): LifecycleMessage =>
-        dropIndexSet.has(index) ? { ...message, status: "dropped" } : message
-    )
-  };
-}
-
-function enforceCapacity(state: GameState): GameState {
-  const queue = findBuildingByRole(state, "queue-hub");
-
-  if (queue) {
-    return dropMessagesOverCapacity(
-      state,
-      "queued",
-      getBuildingStat(state, queue, "capacity"),
-      "queue-overflow"
-    );
-  }
-
-  const apiGate = findBuildingByRole(state, "api-gate");
-
-  return dropMessagesOverCapacity(
-    state,
-    "accepted",
-    getBuildingStat(state, apiGate, "directHandoffCapacity"),
-    "direct-handoff-overflow"
-  );
-}
-
-function ageAcceptedMessages(state: GameState): GameState {
-  return {
-    ...state,
-    messages: state.messages.map((message): LifecycleMessage => {
-      if (!isActiveMessage(message) || message.acceptedTick === undefined) {
-        return message;
-      }
-
-      return {
-        ...message,
-        ageTicks: state.tick - message.acceptedTick
-      };
-    })
-  };
-}
-
-function expirePatientMessages(state: GameState): GameState {
-  const apiGate = findBuildingByRole(state, "api-gate");
-  const patienceTicks = getBuildingStat(state, apiGate, "messagePatienceTicks");
-  let nextState = state;
-
-  const messages = state.messages.map((message): LifecycleMessage => {
-    if (!isActiveMessage(message) || message.ageTicks < patienceTicks) {
-      return message;
-    }
-
-    nextState = changeMeter(nextState, "trust", -2);
-
-    return {
-      ...withoutProcessingProgress(message),
-      status: "expired"
-    };
-  });
-
-  return { ...nextState, messages };
-}
-
-function progressWorkers(state: GameState): GameState {
-  const workerYard = findBuildingByRole(state, "worker-yard");
-  if (!workerYard) {
-    throw new Error("Building definitions are required before running the message lifecycle.");
-  }
-
-  let nextState = state;
-  const messages = state.messages.map((message): LifecycleMessage => {
-    if (message.status !== "processing") {
-      return message;
-    }
-
-    const remainingTicks = Math.max(0, (message.processingRemainingTicks ?? 0) - 1);
-
-    if (remainingTicks > 0) {
-      return {
-        ...message,
-        processingRemainingTicks: remainingTicks
-      };
-    }
-
-    nextState = changeMeter(nextState, "budget", 1);
-    nextState = {
-      ...nextState,
-      eventLog: pushEvent(nextState.eventLog, {
-        tick: state.tick,
-        type: "worker.acked",
-        messageId: message.id,
-        workerYardId: workerYard.id
-      })
-    };
-
-    return {
-      ...withoutProcessingProgress(message),
-      status: "delivered"
-    };
-  });
-
-  return { ...nextState, messages };
-}
-
-function startWorkers(state: GameState): GameState {
-  const workerYard = findBuildingByRole(state, "worker-yard");
-  if (!workerYard) {
-    throw new Error("Building definitions are required before running the message lifecycle.");
-  }
-
-  const processingTicks = getBuildingStat(state, workerYard, "processingTicks");
-  const currentlyProcessing = state.messages.filter(
-    (message) => message.status === "processing"
-  ).length;
-  let availableWorkers = Math.max(0, state.workerCount - currentlyProcessing);
-
-  if (availableWorkers === 0) {
-    return state;
-  }
-
-  let eventLog = state.eventLog;
-  const messages = state.messages.map((message): LifecycleMessage => {
-    if (availableWorkers === 0 || (message.status !== "queued" && message.status !== "accepted")) {
-      return message;
-    }
-
-    availableWorkers -= 1;
-    eventLog = pushEvent(eventLog, {
-      tick: state.tick,
-      type: "worker.started",
-      messageId: message.id,
-      workerYardId: workerYard.id
-    });
-
-    return {
-      ...message,
-      status: "processing",
-      processingRemainingTicks: processingTicks
-    };
-  });
-
-  return { ...state, messages, eventLog };
-}
-
-function recalculateBacklog(state: GameState): GameState {
-  const backlog = state.messages.filter(isActiveMessage).length;
-  const delta = backlog - state.meters.backlog;
-  const pressureByPath = new Map<string, { backlog: number; dropped: number }>();
-
-  for (const message of state.messages) {
-    if (!isActiveMessage(message) && message.status !== "dropped") {
-      continue;
-    }
-
-    const current = pressureByPath.get(message.pathId) ?? { backlog: 0, dropped: 0 };
-    pressureByPath.set(message.pathId, {
-      backlog: current.backlog + (isActiveMessage(message) ? 1 : 0),
-      dropped: current.dropped + (message.status === "dropped" ? 1 : 0)
-    });
-  }
-  const lanePressure = Array.from(pressureByPath, ([pathId, pressure]) => ({
-    pathId,
-    ...pressure
-  }));
-
-  return { ...changeMeter(state, "backlog", delta), lanePressure };
-}
-
-function hasFutureSpawns(wave: WaveDef, elapsed: number): boolean {
-  return wave.spawnSchedule.some((item) => item.tick > elapsed);
-}
-
-function maybeEndWave(state: GameState): GameState {
-  if (state.phase !== "wave") {
-    return state;
-  }
-
-  const wave = activeWave(state);
-  const elapsed = waveElapsedTick(state);
-
-  if (!wave || elapsed === undefined) {
-    return state;
-  }
-
-  const timedOut = elapsed >= wave.timeoutTicks;
-  const spawnWindowResolved = elapsed >= wave.durationTicks && !hasFutureSpawns(wave, elapsed);
-  const activeBacklogResolved = !state.messages.some(isActiveMessage);
-
-  if (!timedOut && (!spawnWindowResolved || !activeBacklogResolved)) {
-    return state;
-  }
-
-  const completedWaveIds = state.completedWaveIds.includes(wave.id)
-    ? state.completedWaveIds
-    : [...state.completedWaveIds, wave.id];
-  const runComplete =
-    isFinalWave(state, wave.id) && hasCompletedAllWaves(state, completedWaveIds) && activeBacklogResolved;
-
-  return {
-    ...state,
-    phase: runComplete ? "complete" : "recap",
+    config: state.config,
+    configId: state.configId,
+    mapId: state.mapId,
+    seed: state.seed,
+    tick: state.tick,
+    phase: hasCompletedAllWaves(state, completedWaveIds) ? "complete" : "recap",
+    towerDefsById: state.towerDefsById,
+    enemyDefsById: state.enemyDefsById,
+    ...(state.map ? { map: state.map } : {}),
+    meters: state.meters,
+    towers: state.towers,
+    enemies: state.enemies,
+    projectiles: state.projectiles,
+    alerts: state.alerts,
+    buildIntent: state.buildIntent,
+    selection: state.selection,
+    hover: state.hover,
     completedWaveIds,
+    commandHistory: state.commandHistory,
     eventLog: pushEvent(state.eventLog, {
       tick: state.tick,
       type: "wave.ended",
@@ -768,90 +340,61 @@ function maybeEndWave(state: GameState): GameState {
   };
 }
 
-function maybeCompleteFinalRecap(state: GameState): GameState {
-  if (
-    state.phase !== "recap" ||
-    !state.activeWaveId ||
-    !isFinalWave(state, state.activeWaveId) ||
-    !hasCompletedAllWaves(state) ||
-    state.messages.some(isActiveMessage)
-  ) {
-    return state;
+function finalSpawnElapsedTick(wave: WaveDef | undefined): number {
+  if (!wave) {
+    return 0;
   }
 
-  return { ...state, phase: "complete" };
+  return Math.max(
+    0,
+    ...wave.spawns.map((spawn) => spawn.tick + (spawn.count - 1) * spawn.intervalTicks)
+  );
 }
 
-export function step(state: GameState, commandsForTick: readonly Command[]): GameState {
-  const recordableCommands = commandsForTick.filter(isRecordableCommand);
-  const commandHistory = [
-    ...state.commandHistory,
-    ...recordableCommands.map((command) => ({
-      tick: state.tick,
-      command: { ...command }
-    }))
-  ];
-  const eventLog = commandsForTick.reduce(
-    (log, command) =>
-      pushEvent(log, {
-        tick: state.tick,
-        type: "command.received",
-        message: command.type
-      }),
-    state.eventLog
-  );
-  const commandState = commandsForTick.reduce(applyCommand, {
-    ...state,
-    commandHistory,
-    eventLog
-  });
-  let lifecycleState = commandState;
-
-  if (lifecycleState.phase === "wave") {
-    lifecycleState = spawnMessages(lifecycleState);
-    lifecycleState = acceptAndRouteMessages(lifecycleState);
-    lifecycleState = enforceCapacity(lifecycleState);
-    lifecycleState = ageAcceptedMessages(lifecycleState);
-    lifecycleState = expirePatientMessages(lifecycleState);
-    lifecycleState = progressWorkers(lifecycleState);
-    lifecycleState = startWorkers(lifecycleState);
-    lifecycleState = recalculateBacklog(lifecycleState);
-    lifecycleState = maybeEndWave(lifecycleState);
-  } else if (lifecycleState.phase === "recap" && lifecycleState.messages.some(isActiveMessage)) {
-    lifecycleState = ageAcceptedMessages(lifecycleState);
-    lifecycleState = expirePatientMessages(lifecycleState);
-    lifecycleState = progressWorkers(lifecycleState);
-    lifecycleState = startWorkers(lifecycleState);
-    lifecycleState = recalculateBacklog(lifecycleState);
+function rangePreviews(state: GameState): SimSnapshot["previews"]["ranges"] {
+  const towerId = state.buildIntent.towerId;
+  if (!towerId) {
+    return [];
   }
-  lifecycleState = maybeCompleteFinalRecap(lifecycleState);
 
-  return {
-    ...lifecycleState,
-    tick: lifecycleState.tick + 1
-  };
+  const towerDef = state.towerDefsById[towerId];
+  if (!towerDef || !state.map) {
+    return [];
+  }
+
+  return state.map.buildPads
+    .filter((pad) => pad.allowedTowerKinds.includes(towerDef.kind))
+    .map((pad) => ({ towerId, padId: pad.id, radius: towerDef.range }));
 }
 
 export function toSnapshot(state: GameState): SimSnapshot {
+  const nextWave = nextIncompleteWave(state);
+
   return {
     tick: state.tick,
     phase: state.phase,
-    meters: {
-      trust: state.meters.trust,
-      budget: state.meters.budget,
-      backlog: state.meters.backlog
-    },
-    buildings: state.buildings.map((building) => ({ ...building })),
-    messages: state.messages.map(({ id, type, status, pathId, ageTicks }) => ({
-      id,
-      type,
-      status,
-      pathId,
-      ageTicks
-    })),
-    lanePressure: state.lanePressure.map((pressure) => ({ ...pressure })),
+    meters: { ...state.meters },
+    towers: state.towers.map((tower) => ({ ...tower })),
+    enemies: state.enemies.map((enemy) => ({ ...enemy })),
+    projectiles: state.projectiles.map((projectile) => ({ ...projectile })),
     alerts: [...state.alerts],
-    workerCount: state.workerCount,
+    buildIntent: { ...state.buildIntent },
+    selection: { ...state.selection },
+    hover: { ...state.hover },
+    previews: {
+      ranges: rangePreviews(state),
+      connections: [],
+      ...(nextWave
+        ? {
+            nextWave: {
+              waveId: nextWave.id,
+              enemyKinds: [...nextWave.preview.enemyKinds],
+              pressure: nextWave.preview.pressure,
+              hint: nextWave.preview.hint
+            }
+          }
+        : {})
+    },
     ...(state.activeWaveId ? { activeWaveId: state.activeWaveId } : {})
   };
 }

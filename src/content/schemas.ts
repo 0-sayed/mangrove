@@ -3,51 +3,108 @@ import { Type, type Static, type TSchema } from "@sinclair/typebox";
 
 const IdSchema = Type.String({ minLength: 1 });
 const NonNegativeNumberSchema = Type.Number({ minimum: 0 });
+const PositiveNumberSchema = Type.Number({ exclusiveMinimum: 0 });
 const PositiveIntegerSchema = Type.Integer({ minimum: 1 });
-const MeterSchema = Type.Union([Type.Literal("trust"), Type.Literal("budget"), Type.Literal("backlog")]);
-const BuildingRoleSchema = Type.Union([Type.Literal("api-gate"), Type.Literal("queue-hub"), Type.Literal("worker-yard")]);
-const MessageTypeSchema = Type.Union([Type.Literal("useful")]);
-const MessageStatusSchema = Type.Union([
-  Type.Literal("spawned"),
-  Type.Literal("accepted"),
-  Type.Literal("queued"),
-  Type.Literal("processing"),
-  Type.Literal("delivered"),
-  Type.Literal("dropped"),
-  Type.Literal("expired")
-]);
+const GridPointSchema = Type.Object({ x: Type.Number(), y: Type.Number() }, { additionalProperties: false });
 
-const MeterConditionSchema = Type.Object(
+const TowerKindSchema = Type.Union([Type.Literal("worker"), Type.Literal("queue"), Type.Literal("load-balancer")]);
+
+const EnemyKindSchema = Type.Union([Type.Literal("request-runner"), Type.Literal("burst-swarm"), Type.Literal("heavy-payload")]);
+
+const PressureLevelSchema = Type.Union([Type.Literal("low"), Type.Literal("medium"), Type.Literal("high")]);
+
+const TargetTagSchema = Type.Union([Type.Literal("ground"), Type.Literal("swarm"), Type.Literal("heavy")]);
+
+const SimPhaseSchema = Type.Union([Type.Literal("setup"), Type.Literal("wave"), Type.Literal("recap"), Type.Literal("complete")]);
+
+const PathDefSchema = Type.Object(
   {
-    kind: Type.Union([Type.Literal("trust-at-least"), Type.Literal("trust-below")]),
-    value: Type.Number()
+    id: IdSchema,
+    portalId: IdSchema,
+    coreId: IdSchema,
+    points: Type.Array(GridPointSchema, { minItems: 2 }),
+    length: PositiveNumberSchema
   },
   { additionalProperties: false }
 );
 
-const StartingStateSchema = Type.Object(
+const BuildPadDefSchema = Type.Object(
   {
-    budget: NonNegativeNumberSchema,
-    trust: NonNegativeNumberSchema,
-    backlog: NonNegativeNumberSchema,
-    workerCount: PositiveIntegerSchema
+    id: IdSchema,
+    x: Type.Number(),
+    y: Type.Number(),
+    allowedTowerKinds: Type.Array(TowerKindSchema, { minItems: 1 })
   },
   { additionalProperties: false }
 );
 
-const StartingBuildingSchema = Type.Object(
+const MapPointSchema = Type.Object({ id: IdSchema, x: Type.Number(), y: Type.Number() }, { additionalProperties: false });
+
+const MapDefSchema = Type.Object(
   {
-    defId: IdSchema,
-    slotId: IdSchema
+    id: IdSchema,
+    size: Type.Object({ width: PositiveNumberSchema, height: PositiveNumberSchema }, { additionalProperties: false }),
+    paths: Type.Array(PathDefSchema, { minItems: 1 }),
+    buildPads: Type.Array(BuildPadDefSchema),
+    portals: Type.Array(MapPointSchema, { minItems: 1 }),
+    cores: Type.Array(MapPointSchema, { minItems: 1 })
   },
   { additionalProperties: false }
 );
 
-const SpawnScheduleItemSchema = Type.Object(
+const TowerCombatSchema = Type.Object(
+  {
+    damage: NonNegativeNumberSchema,
+    cooldownTicks: PositiveIntegerSchema
+  },
+  { additionalProperties: false }
+);
+
+const TowerDefSchema = Type.Object(
+  {
+    id: IdSchema,
+    kind: TowerKindSchema,
+    displayName: Type.String({ minLength: 1 }),
+    cost: NonNegativeNumberSchema,
+    range: NonNegativeNumberSchema,
+    targets: Type.Array(TargetTagSchema, { minItems: 1 }),
+    combat: TowerCombatSchema,
+    softwareShadow: Type.String({ minLength: 1 })
+  },
+  { additionalProperties: false }
+);
+
+const EnemyDefSchema = Type.Object(
+  {
+    id: IdSchema,
+    kind: EnemyKindSchema,
+    displayName: Type.String({ minLength: 1 }),
+    maxHealth: PositiveNumberSchema,
+    speed: PositiveNumberSchema,
+    leakDamage: PositiveIntegerSchema,
+    reward: NonNegativeNumberSchema,
+    traits: Type.Array(Type.String({ minLength: 1 }))
+  },
+  { additionalProperties: false }
+);
+
+const WaveSpawnSchema = Type.Object(
   {
     tick: Type.Integer({ minimum: 0 }),
-    messageType: MessageTypeSchema,
-    count: PositiveIntegerSchema
+    enemyId: IdSchema,
+    pathId: IdSchema,
+    count: PositiveIntegerSchema,
+    intervalTicks: PositiveIntegerSchema
+  },
+  { additionalProperties: false }
+);
+
+const WavePreviewSchema = Type.Object(
+  {
+    waveId: IdSchema,
+    enemyKinds: Type.Array(EnemyKindSchema, { minItems: 1 }),
+    pressure: PressureLevelSchema,
+    hint: Type.String({ minLength: 1 })
   },
   { additionalProperties: false }
 );
@@ -55,30 +112,28 @@ const SpawnScheduleItemSchema = Type.Object(
 const WaveDefSchema = Type.Object(
   {
     id: IdSchema,
-    durationTicks: PositiveIntegerSchema,
-    timeoutTicks: PositiveIntegerSchema,
-    spawnSchedule: Type.Array(SpawnScheduleItemSchema),
-    messageTypes: Type.Array(MessageTypeSchema),
-    recapId: IdSchema
+    displayName: Type.String({ minLength: 1 }),
+    preview: Type.Omit(WavePreviewSchema, ["waveId"]),
+    spawns: Type.Array(WaveSpawnSchema),
+    budgetReward: NonNegativeNumberSchema
   },
   { additionalProperties: false }
 );
 
-const RecapSchema = Type.Object(
+const StartingStateSchema = Type.Object(
+  {
+    townHealth: PositiveIntegerSchema,
+    buildBudget: NonNegativeNumberSchema,
+    pressure: NonNegativeNumberSchema
+  },
+  { additionalProperties: false }
+);
+
+const RecapLawSchema = Type.Object(
   {
     id: IdSchema,
-    lines: Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 3 })
-  },
-  { additionalProperties: false }
-);
-
-const UnlockableCommandSchema = Type.Union([Type.Literal("PlaceBuilding"), Type.Literal("SetWorkerCount")]);
-
-const UnlockRuleSchema = Type.Object(
-  {
     afterWaveId: IdSchema,
-    buildingIds: Type.Optional(Type.Array(IdSchema)),
-    commandTypes: Type.Optional(Type.Array(UnlockableCommandSchema))
+    text: Type.String({ minLength: 1 })
   },
   { additionalProperties: false }
 );
@@ -88,101 +143,84 @@ const LevelConfigSchema = Type.Object(
     id: IdSchema,
     mapId: IdSchema,
     startingState: StartingStateSchema,
-    startingBuildings: Type.Array(StartingBuildingSchema),
-    availableBuildings: Type.Array(IdSchema),
-    unlocks: Type.Optional(Type.Array(UnlockRuleSchema)),
-    waves: Type.Array(WaveDefSchema),
-    winCondition: MeterConditionSchema,
-    lossCondition: MeterConditionSchema,
-    recaps: Type.Array(RecapSchema)
-  },
-  { additionalProperties: false }
-);
-
-const PathMetadataSchema = Type.Object(
-  {
-    id: IdSchema,
-    spawnId: IdSchema,
-    exitId: IdSchema,
-    nodeIds: Type.Array(IdSchema, { minItems: 2 })
-  },
-  { additionalProperties: false }
-);
-
-const BuildSlotSchema = Type.Object(
-  {
-    id: IdSchema,
-    role: BuildingRoleSchema,
-    x: Type.Number(),
-    y: Type.Number()
-  },
-  { additionalProperties: false }
-);
-
-const MapPointSchema = Type.Object(
-  {
-    id: IdSchema,
-    x: Type.Number(),
-    y: Type.Number()
-  },
-  { additionalProperties: false }
-);
-
-const MapMetadataSchema = Type.Object(
-  {
-    id: IdSchema,
-    paths: Type.Array(PathMetadataSchema, { minItems: 1 }),
-    buildSlots: Type.Array(BuildSlotSchema),
-    spawns: Type.Array(MapPointSchema, { minItems: 1 }),
-    exits: Type.Array(MapPointSchema, { minItems: 1 })
-  },
-  { additionalProperties: false }
-);
-
-const BuildingDefSchema = Type.Object(
-  {
-    id: IdSchema,
-    role: BuildingRoleSchema,
-    cost: NonNegativeNumberSchema,
-    allowedSlots: Type.Array(IdSchema),
-    stats: Type.Record(Type.String({ pattern: "^.+$" }), NonNegativeNumberSchema, { additionalProperties: false }),
-    visibleStates: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })
+    availableTowerIds: Type.Array(IdSchema),
+    waves: Type.Array(WaveDefSchema, { minItems: 1 }),
+    recapLaws: Type.Array(RecapLawSchema)
   },
   { additionalProperties: false }
 );
 
 const CommandSchema = Type.Union([
   Type.Object({ type: Type.Literal("StartWave"), waveId: IdSchema }, { additionalProperties: false }),
-  Type.Object({ type: Type.Literal("PlaceBuilding"), buildingId: IdSchema, slotId: IdSchema }, { additionalProperties: false }),
-  Type.Object({ type: Type.Literal("SetWorkerCount"), count: PositiveIntegerSchema }, { additionalProperties: false })
+  Type.Object({ type: Type.Literal("BuildTower"), towerId: IdSchema, padId: IdSchema }, { additionalProperties: false }),
+  Type.Object({ type: Type.Literal("SetBuildIntent"), towerId: IdSchema }, { additionalProperties: false }),
+  Type.Object({ type: Type.Literal("ClearBuildIntent") }, { additionalProperties: false }),
+  Type.Object({ type: Type.Literal("SelectEntity"), entityId: IdSchema }, { additionalProperties: false }),
+  Type.Object({ type: Type.Literal("ClearSelection") }, { additionalProperties: false }),
+  Type.Object({ type: Type.Literal("SetHover"), entityId: IdSchema }, { additionalProperties: false }),
+  Type.Object({ type: Type.Literal("ClearHover") }, { additionalProperties: false })
 ]);
 
-const SnapshotBuildingSchema = Type.Object(
+const BuildIntentSchema = Type.Object({ towerId: Type.Optional(IdSchema) }, { additionalProperties: false });
+const SelectionStateSchema = Type.Object({ entityId: Type.Optional(IdSchema) }, { additionalProperties: false });
+const HoverStateSchema = Type.Object({ entityId: Type.Optional(IdSchema) }, { additionalProperties: false });
+
+const RangePreviewSchema = Type.Object(
+  { towerId: IdSchema, padId: IdSchema, radius: NonNegativeNumberSchema },
+  { additionalProperties: false }
+);
+
+const ConnectionPreviewSchema = Type.Object(
   {
-    id: IdSchema,
-    defId: IdSchema,
-    slotId: IdSchema,
-    state: Type.String({ minLength: 1 })
+    sourceId: IdSchema,
+    targetIds: Type.Array(IdSchema, { minItems: 1 }),
+    kind: Type.Union([
+      Type.Literal("coverage-overlap"),
+      Type.Literal("stall-window"),
+      Type.Literal("route-influence"),
+      Type.Literal("support-aura")
+    ])
   },
   { additionalProperties: false }
 );
 
-const SnapshotMessageSchema = Type.Object(
+const SnapshotTowerSchema = Type.Object(
   {
     id: IdSchema,
-    type: MessageTypeSchema,
-    status: MessageStatusSchema,
-    pathId: IdSchema,
-    ageTicks: Type.Integer({ minimum: 0 })
+    towerId: IdSchema,
+    padId: IdSchema,
+    cooldownRemainingTicks: Type.Integer({ minimum: 0 })
   },
   { additionalProperties: false }
 );
 
-const LanePressureSchema = Type.Object(
+const SnapshotEnemySchema = Type.Object(
   {
+    id: IdSchema,
+    enemyId: IdSchema,
     pathId: IdSchema,
-    backlog: NonNegativeNumberSchema,
-    dropped: NonNegativeNumberSchema
+    progress: Type.Number({ minimum: 0 }),
+    health: NonNegativeNumberSchema,
+    status: Type.Union([Type.Literal("active"), Type.Literal("resolved"), Type.Literal("leaked")])
+  },
+  { additionalProperties: false }
+);
+
+const SnapshotProjectileSchema = Type.Object(
+  {
+    id: IdSchema,
+    towerInstanceId: IdSchema,
+    enemyInstanceId: IdSchema,
+    progress: Type.Number({ minimum: 0, maximum: 1 })
+  },
+  { additionalProperties: false }
+);
+
+const SnapshotPreviewsSchema = Type.Object(
+  {
+    ranges: Type.Array(RangePreviewSchema),
+    connections: Type.Array(ConnectionPreviewSchema),
+    nextWave: Type.Optional(WavePreviewSchema)
   },
   { additionalProperties: false }
 );
@@ -190,20 +228,16 @@ const LanePressureSchema = Type.Object(
 const SimSnapshotSchema = Type.Object(
   {
     tick: Type.Integer({ minimum: 0 }),
-    phase: Type.Union([Type.Literal("setup"), Type.Literal("wave"), Type.Literal("recap"), Type.Literal("complete")]),
-    meters: Type.Object(
-      {
-        trust: NonNegativeNumberSchema,
-        budget: NonNegativeNumberSchema,
-        backlog: NonNegativeNumberSchema
-      },
-      { additionalProperties: false }
-    ),
-    buildings: Type.Array(SnapshotBuildingSchema),
-    messages: Type.Array(SnapshotMessageSchema),
-    lanePressure: Type.Array(LanePressureSchema),
+    phase: SimPhaseSchema,
+    meters: StartingStateSchema,
+    towers: Type.Array(SnapshotTowerSchema),
+    enemies: Type.Array(SnapshotEnemySchema),
+    projectiles: Type.Array(SnapshotProjectileSchema),
     alerts: Type.Array(Type.String({ minLength: 1 })),
-    workerCount: Type.Optional(PositiveIntegerSchema),
+    buildIntent: BuildIntentSchema,
+    selection: SelectionStateSchema,
+    hover: HoverStateSchema,
+    previews: SnapshotPreviewsSchema,
     activeWaveId: Type.Optional(IdSchema)
   },
   { additionalProperties: false }
@@ -211,80 +245,45 @@ const SimSnapshotSchema = Type.Object(
 
 const SimEventSchema = Type.Union([
   Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("message.spawned"), messageId: IdSchema, messageType: MessageTypeSchema },
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("command.received"), commandType: Type.String({ minLength: 1 }) },
+    { additionalProperties: false }
+  ),
+  Type.Object({ tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.started"), waveId: IdSchema }, { additionalProperties: false }),
+  Type.Object({ tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.ended"), waveId: IdSchema }, { additionalProperties: false }),
+  Type.Object(
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("tower.built"), towerId: IdSchema, padId: IdSchema },
     { additionalProperties: false }
   ),
   Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("message.accepted"), messageId: IdSchema },
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("build-intent.changed"), towerId: Type.Optional(IdSchema) },
     { additionalProperties: false }
   ),
   Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("message.queued"), messageId: IdSchema, queueId: IdSchema },
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("selection.changed"), entityId: Type.Optional(IdSchema) },
     { additionalProperties: false }
   ),
   Type.Object(
-    {
-      tick: Type.Integer({ minimum: 0 }),
-      type: Type.Literal("message.dropped"),
-      messageId: IdSchema,
-      reason: Type.Union([Type.Literal("direct-handoff-overflow"), Type.Literal("queue-overflow")])
-    },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("worker.started"), messageId: IdSchema, workerYardId: IdSchema },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("worker.acked"), messageId: IdSchema, workerYardId: IdSchema },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("building.placed"), buildingId: IdSchema, slotId: IdSchema },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("worker-count.changed"), count: PositiveIntegerSchema },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("meter.changed"), meter: MeterSchema, delta: Type.Number(), value: NonNegativeNumberSchema },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.started"), waveId: IdSchema },
-    { additionalProperties: false }
-  ),
-  Type.Object(
-    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.ended"), waveId: IdSchema },
+    { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("hover.changed"), entityId: Type.Optional(IdSchema) },
     { additionalProperties: false }
   )
 ]);
 
-const PostWaveResultSchema = Type.Object(
-  {
-    waveId: IdSchema,
-    delivered: NonNegativeNumberSchema,
-    dropped: NonNegativeNumberSchema,
-    expired: NonNegativeNumberSchema,
-    backlogPeak: NonNegativeNumberSchema,
-    trustDelta: Type.Number(),
-    budgetDelta: Type.Number(),
-    playerActionsUsed: Type.Array(CommandSchema),
-    revealedBackendTerm: Type.String({ minLength: 1 }),
-    revealedLaw: Type.String({ minLength: 1 })
-  },
-  { additionalProperties: false }
-);
-
-export type LevelConfig = Static<typeof LevelConfigSchema>;
-export type MapMetadata = Static<typeof MapMetadataSchema>;
-export type BuildingDef = Static<typeof BuildingDefSchema>;
+export type PathDef = Static<typeof PathDefSchema>;
+export type BuildPadDef = Static<typeof BuildPadDefSchema>;
+export type MapDef = Static<typeof MapDefSchema>;
+export type TowerDef = Static<typeof TowerDefSchema>;
+export type EnemyDef = Static<typeof EnemyDefSchema>;
 export type WaveDef = Static<typeof WaveDefSchema>;
+export type LevelConfig = Static<typeof LevelConfigSchema>;
 export type Command = Static<typeof CommandSchema>;
+export type BuildIntent = Static<typeof BuildIntentSchema>;
+export type SelectionState = Static<typeof SelectionStateSchema>;
+export type HoverState = Static<typeof HoverStateSchema>;
+export type RangePreview = Static<typeof RangePreviewSchema>;
+export type ConnectionPreview = Static<typeof ConnectionPreviewSchema>;
+export type WavePreview = Static<typeof WavePreviewSchema>;
 export type SimSnapshot = Static<typeof SimSnapshotSchema>;
 export type SimEvent = Static<typeof SimEventSchema>;
-export type PostWaveResult = Static<typeof PostWaveResultSchema>;
 
 const ajv = new Ajv({ allErrors: true });
 
@@ -307,11 +306,19 @@ function createValidator<T>(schema: TSchema): (value: unknown) => ValidationResu
   };
 }
 
-export const validateLevelConfig = createValidator<LevelConfig>(LevelConfigSchema);
-export const validateMapMetadata = createValidator<MapMetadata>(MapMetadataSchema);
-export const validateBuildingDef = createValidator<BuildingDef>(BuildingDefSchema);
+export const validatePathDef = createValidator<PathDef>(PathDefSchema);
+export const validateBuildPadDef = createValidator<BuildPadDef>(BuildPadDefSchema);
+export const validateMapDef = createValidator<MapDef>(MapDefSchema);
+export const validateTowerDef = createValidator<TowerDef>(TowerDefSchema);
+export const validateEnemyDef = createValidator<EnemyDef>(EnemyDefSchema);
 export const validateWaveDef = createValidator<WaveDef>(WaveDefSchema);
+export const validateLevelConfig = createValidator<LevelConfig>(LevelConfigSchema);
 export const validateCommand = createValidator<Command>(CommandSchema);
+export const validateBuildIntent = createValidator<BuildIntent>(BuildIntentSchema);
+export const validateSelectionState = createValidator<SelectionState>(SelectionStateSchema);
+export const validateHoverState = createValidator<HoverState>(HoverStateSchema);
+export const validateRangePreview = createValidator<RangePreview>(RangePreviewSchema);
+export const validateConnectionPreview = createValidator<ConnectionPreview>(ConnectionPreviewSchema);
+export const validateWavePreview = createValidator<WavePreview>(WavePreviewSchema);
 export const validateSimSnapshot = createValidator<SimSnapshot>(SimSnapshotSchema);
 export const validateSimEvent = createValidator<SimEvent>(SimEventSchema);
-export const validatePostWaveResult = createValidator<PostWaveResult>(PostWaveResultSchema);

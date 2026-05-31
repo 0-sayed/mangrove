@@ -1,1 +1,1 @@
-export { messageFestivalV0Level as bootstrapLevel } from "@content/message-festival-v0";
+export { tdContractFixtureLevel as bootstrapLevel } from "@content/td-contract-fixture";

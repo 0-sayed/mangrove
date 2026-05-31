@@ -2,25 +2,16 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { Hud } from "@app/Hud";
-import { createInitialRun, getRunControls, toRunSnapshot } from "@app/run-controller";
+import {
+  advanceRun,
+  applyRunCommand,
+  createInitialRun,
+  getRunControls,
+  toRunSnapshot
+} from "@app/run-controller";
 
 describe("Hud", () => {
-  it("omits static title chrome from the gameplay overlay", () => {
-    const run = createInitialRun(12345);
-    const html = renderToString(
-      <Hud
-        snapshot={toRunSnapshot(run)}
-        controls={getRunControls(run.game)}
-        onCommand={() => undefined}
-      />
-    );
-
-    expect(html).not.toContain("Production Town");
-    expect(html).not.toContain("Mangrove");
-    expect(html).not.toContain("message-festival-v0");
-  });
-
-  it("renders atlas-backed meter icons with accessible labels", () => {
+  it("renders TD meters with atlas-backed icons", () => {
     const run = createInitialRun(12345);
     const html = renderToString(
       <Hud
@@ -31,9 +22,9 @@ describe("Hud", () => {
     );
 
     for (const [label, tone] of [
-      ["Trust", "trust"],
-      ["Budget", "budget"],
-      ["Backlog", "backlog"]
+      ["Town Health", "town-health"],
+      ["Build Budget", "build-budget"],
+      ["Pressure", "pressure"]
     ] as const) {
       expect(html).toContain(`aria-label="${label}"`);
       expect(html).toContain("hud-icon");
@@ -42,11 +33,9 @@ describe("Hud", () => {
 
     expect(html.match(/aria-hidden="true"/g)).toHaveLength(3);
     expect(html.match(/--hud-icon-image/g)).toHaveLength(3);
-    expect(html.match(/--hud-icon-position/g)).toHaveLength(3);
-    expect(html.match(/--hud-icon-size/g)).toHaveLength(3);
   });
 
-  it("explains the run using general tower-defense language", () => {
+  it("uses TD controls and removes prototype labels", () => {
     const run = createInitialRun(12345);
     const html = renderToString(
       <Hud
@@ -56,14 +45,19 @@ describe("Hud", () => {
       />
     );
 
-    expect(html).toContain("Build currency");
-    expect(html).toContain("spent on defenses and upgrades");
-    expect(html).toContain("buffer defense");
-    expect(html).toContain("processor defense");
-    expect(html).not.toContain("Current objective");
-    expect(html).not.toContain("Trace the route");
-    expect(html).not.toContain("spent on queue");
-    expect(html).not.toContain("spent on queue and workers");
+    expect(html).toContain("Start Normal Flow");
+    expect(html).toContain("Build Worker Tower (30)");
+    for (const removedLabel of [
+      "Trust",
+      "Backlog",
+      "Workers",
+      "Build Queue Hub",
+      "Start Opening Flow",
+      "Prepare",
+      "No wave"
+    ]) {
+      expect(html).not.toContain(removedLabel);
+    }
   });
 
   it("uses custom HUD tooltips without native title popups", () => {
@@ -78,5 +72,33 @@ describe("Hud", () => {
 
     expect(html).toContain("data-tooltip=");
     expect(html).not.toContain("title=");
+  });
+
+  it("shows explicit start-wave button states after the wave starts and completes", () => {
+    const started = applyRunCommand(createInitialRun(12345), {
+      type: "StartWave",
+      waveId: "wave-normal-flow"
+    });
+    const completed = advanceRun(started, 42);
+
+    const runningHtml = renderToString(
+      <Hud
+        snapshot={toRunSnapshot(started)}
+        controls={getRunControls(started.game)}
+        onCommand={() => undefined}
+      />
+    );
+    const completedHtml = renderToString(
+      <Hud
+        snapshot={toRunSnapshot(completed)}
+        controls={getRunControls(completed.game)}
+        onCommand={() => undefined}
+      />
+    );
+
+    expect(runningHtml).toContain("Normal Flow Running");
+    expect(runningHtml).not.toContain("Start Normal Flow");
+    expect(completedHtml).toContain("No Wave Available");
+    expect(completedHtml).not.toContain("Start Complete");
   });
 });

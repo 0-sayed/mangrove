@@ -3,107 +3,85 @@ import { describe, expect, it } from "vitest";
 import {
   advanceRun,
   applyRunCommand,
-  createIncreaseWorkerCountCommand,
+  createBuildWorkerTowerCommand,
   createInitialRun,
+  createStartNextWaveCommand,
   getRunControls,
   queueRunCommand,
   toRunSnapshot
 } from "@app/run-controller";
 
-function finishOpeningFlow() {
-  const started = applyRunCommand(createInitialRun(12345), {
-    type: "StartWave",
-    waveId: "wave-opening-flow"
-  });
-
-  return advanceRun(started, 240);
-}
-
 describe("run controller", () => {
-  it("starts the opening wave and advances the simulator", () => {
+  it("bootstraps the TD fixture and exposes setup controls", () => {
     const initial = createInitialRun(12345);
-    const started = applyRunCommand(initial, {
-      type: "StartWave",
-      waveId: "wave-opening-flow"
-    });
+    const snapshot = toRunSnapshot(initial);
+    const controls = getRunControls(initial.game);
 
-    expect(toRunSnapshot(initial)).toMatchObject({
+    expect(snapshot).toMatchObject({
       tick: 0,
-      phase: "setup"
+      phase: "setup",
+      meters: { townHealth: 20, buildBudget: 60, pressure: 0 },
+      towers: [],
+      enemies: []
     });
-    expect(getRunControls(initial.game).phaseLabel).toBe("Prepare");
-    expect(toRunSnapshot(started)).toMatchObject({
-      tick: 1,
-      phase: "wave",
-      activeWaveId: "wave-opening-flow"
-    });
-    expect(getRunControls(started.game).phaseLabel).toBe("Wave");
-  });
-
-  it("unlocks Queue Hub, worker tuning, and Flood Wave after Opening Flow drains", () => {
-    const afterOpening = finishOpeningFlow();
-    const controls = getRunControls(afterOpening.game);
-
-    expect(toRunSnapshot(afterOpening).phase).toBe("recap");
-    expect(controls.phaseLabel).toBe("Build Phase");
     expect(controls).toMatchObject({
-      canPlaceQueueHub: true,
-      canIncreaseWorkerCount: true,
+      phaseLabel: "Build",
+      activeWaveLabel: "Awaiting wave",
+      nextWaveId: "wave-normal-flow",
+      nextWaveLabel: "Normal Flow",
       canStartNextWave: true,
-      nextWaveId: "wave-flood",
-      queueHubCost: 40,
-      workerCount: 1,
-      maxWorkerCount: 2,
-      workerCountUpgradeCost: 20
+      canBuildWorkerTower: true,
+      workerTowerCost: 30,
+      isAutoAdvancing: false
     });
   });
 
-  it("applies between-wave commands before Flood Wave starts", () => {
-    const afterOpening = finishOpeningFlow();
-    const floodStarted = advanceRun(
+  it("creates TD build and start-wave commands", () => {
+    const controls = getRunControls(createInitialRun(12345).game);
+
+    expect(createBuildWorkerTowerCommand()).toEqual({
+      type: "BuildTower",
+      towerId: "worker-tower",
+      padId: "pad-worker-a"
+    });
+    expect(createStartNextWaveCommand(controls)).toEqual({
+      type: "StartWave",
+      waveId: "wave-normal-flow"
+    });
+  });
+
+  it("applies queued TD commands to build a tower and start the wave", () => {
+    const initial = createInitialRun(12345);
+    const started = advanceRun(
       queueRunCommand(
-        queueRunCommand(
-          queueRunCommand(afterOpening, {
-            type: "PlaceBuilding",
-            buildingId: "queue-hub",
-            slotId: "slot_queue_1"
-          }),
-          {
-            type: "SetWorkerCount",
-            count: 2
-          }
-        ),
-        {
-          type: "StartWave",
-          waveId: "wave-flood"
-        }
+        queueRunCommand(initial, createBuildWorkerTowerCommand()),
+        createStartNextWaveCommand(getRunControls(initial.game))
       )
     );
-    const snapshot = toRunSnapshot(floodStarted);
+    const snapshot = toRunSnapshot(started);
 
-    expect(snapshot.tick).toBe(toRunSnapshot(afterOpening).tick + 1);
     expect(snapshot.phase).toBe("wave");
-    expect(snapshot.activeWaveId).toBe("wave-flood");
-    expect(snapshot.buildings.some((building) => building.defId === "queue-hub")).toBe(true);
-    expect(snapshot.workerCount).toBe(2);
-    expect(snapshot.meters.budget).toBeGreaterThanOrEqual(0);
+    expect(snapshot.activeWaveId).toBe("wave-normal-flow");
+    expect(snapshot.towers).toEqual([
+      {
+        id: "worker-tower@pad-worker-a#0",
+        towerId: "worker-tower",
+        padId: "pad-worker-a",
+        cooldownRemainingTicks: 0
+      }
+    ]);
+    expect(snapshot.meters.buildBudget).toBe(30);
   });
 
-  it("reports running while wave or recap messages need ticks", () => {
+  it("reports auto-advance only while a contract-only wave is running", () => {
     const started = applyRunCommand(createInitialRun(12345), {
       type: "StartWave",
-      waveId: "wave-opening-flow"
+      waveId: "wave-normal-flow"
     });
-    const afterOpening = finishOpeningFlow();
+    const completed = advanceRun(started, 42);
 
     expect(getRunControls(started.game).isAutoAdvancing).toBe(true);
-    expect(getRunControls(afterOpening.game).isAutoAdvancing).toBe(false);
-  });
-
-  it("creates worker tuning commands from the current worker count", () => {
-    expect(createIncreaseWorkerCountCommand(2)).toEqual({
-      type: "SetWorkerCount",
-      count: 3
-    });
+    expect(toRunSnapshot(completed).phase).toBe("complete");
+    expect(getRunControls(completed.game).isAutoAdvancing).toBe(false);
   });
 });

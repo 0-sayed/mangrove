@@ -1,19 +1,21 @@
 import Phaser from "phaser";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 
-import type { BuildingDef, Command, LevelConfig, MapMetadata, SimSnapshot } from "@content/schemas";
+import type { Command, LevelConfig, MapDef, SimSnapshot, TowerDef } from "@content/schemas";
+import { buildPadCommandForWorldPoint } from "@game/battlefield-input";
 import { BATTLEFIELD_VIEW } from "@game/battlefield-view";
 import { BattlefieldScene } from "@game/BattlefieldScene";
+import { clientPointToWorldPoint } from "@game/pointer-transform";
 
 export interface GameCanvasProps {
   readonly level: LevelConfig;
-  readonly map: MapMetadata;
-  readonly buildingDefs: readonly BuildingDef[];
+  readonly map: MapDef;
+  readonly towerDefs: readonly TowerDef[];
   readonly snapshot: SimSnapshot;
-  readonly onCommand?: (command: Command) => void;
+  readonly onCommand: (command: Command) => void;
 }
 
-export function GameCanvas({ level, map, buildingDefs, snapshot, onCommand }: GameCanvasProps) {
+export function GameCanvas({ level, map, towerDefs, snapshot, onCommand }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<BattlefieldScene | null>(null);
   const latestSnapshotRef = useRef(snapshot);
@@ -28,17 +30,38 @@ export function GameCanvas({ level, map, buildingDefs, snapshot, onCommand }: Ga
     latestOnCommandRef.current = onCommand;
   }, [onCommand]);
 
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    const canvas = event.currentTarget.querySelector("canvas");
+
+    if (!canvas) {
+      return;
+    }
+
+    const command = buildPadCommandForWorldPoint(
+      level,
+      map,
+      towerDefs,
+      latestSnapshotRef.current,
+      clientPointToWorldPoint(canvas.getBoundingClientRect(), event)
+    );
+
+    if (command) {
+      latestOnCommandRef.current(command);
+    }
+  };
+
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
 
     const scene = new BattlefieldScene({
-      level,
       map,
-      buildingDefs,
+      towerDefs,
       snapshot: latestSnapshotRef.current,
-      onCommand: (command) => latestOnCommandRef.current?.(command)
+      onCommand: (command) => {
+        latestOnCommandRef.current(command);
+      }
     });
     sceneRef.current = scene;
 
@@ -59,7 +82,14 @@ export function GameCanvas({ level, map, buildingDefs, snapshot, onCommand }: Ga
       sceneRef.current = null;
       game.destroy(true);
     };
-  }, [buildingDefs, level, map]);
+  }, [level, map, towerDefs]);
 
-  return <section ref={containerRef} className="game-canvas" data-testid="game-canvas" />;
+  return (
+    <section
+      ref={containerRef}
+      className="game-canvas"
+      data-testid="game-canvas"
+      onPointerDown={handlePointerDown}
+    />
+  );
 }
