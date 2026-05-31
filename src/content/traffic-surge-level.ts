@@ -82,7 +82,7 @@ const requestRunnerDef: EnemyDef = {
   kind: "request-runner",
   displayName: "Request Runner",
   maxHealth: 3,
-  speed: 1,
+  speed: 0.25,
   leakDamage: 1,
   reward: 2,
   traits: ["normal-request"]
@@ -93,7 +93,7 @@ const burstSwarmDef: EnemyDef = {
   kind: "burst-swarm",
   displayName: "Burst Swarm",
   maxHealth: 1,
-  speed: 1.3,
+  speed: 0.32,
   leakDamage: 1,
   reward: 1,
   traits: ["burst-traffic", "swarm"]
@@ -104,7 +104,7 @@ const heavyPayloadDef: EnemyDef = {
   kind: "heavy-payload",
   displayName: "Heavy Payload",
   maxHealth: 8,
-  speed: 0.55,
+  speed: 0.14,
   leakDamage: 3,
   reward: 5,
   traits: ["large-job", "heavy"]

@@ -128,6 +128,15 @@ h1 {
   grid-column: 2 / -1;
 }
 
+.speed-control {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid rgba(248, 245, 236, 0.28);
+  border-radius: 4px;
+  background: rgba(16, 24, 32, 0.5);
+  pointer-events: auto;
+}
+
 .tooltip-anchor {
   position: relative;
   display: inline-flex;
@@ -143,16 +152,34 @@ h1 {
   cursor: pointer;
 }
 
+.speed-control button {
+  min-width: 58px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.speed-control button + button {
+  border-left: 1px solid rgba(248, 245, 236, 0.22);
+}
+
+.speed-control button[aria-pressed="true"] {
+  color: #101820;
+  background: #f5c76b;
+}
+
 .hud button,
 .hud__status span,
 .meter,
-.tooltip-anchor {
+.tooltip-anchor,
+.speed-control {
   pointer-events: auto;
 }
 
 .hud__status span,
 .meter,
-.tooltip-anchor {
+.tooltip-anchor,
+.speed-control {
   position: relative;
 }
 
@@ -210,6 +237,14 @@ h1 {
 
 .hud__controls button:not(:disabled):hover {
   background: #326b60;
+}
+
+.speed-control button:not(:disabled):hover {
+  background: rgba(245, 199, 107, 0.22);
+}
+
+.speed-control button[aria-pressed="true"]:hover {
+  background: #f5c76b;
 }
 
 .sr-only {

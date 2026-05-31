@@ -160,6 +160,20 @@ describe("TD content and runtime schemas", () => {
       }).ok
     ).toBe(true);
     expect(
+      validateConnectionPreview({
+        sourceId: "road-relief",
+        targetIds: ["road-relief"],
+        kind: "weak-coverage"
+      }).ok
+    ).toBe(true);
+    expect(
+      validateConnectionPreview({
+        sourceId: "queue-snare@pad-queue-a#1",
+        targetIds: ["road-main"],
+        kind: "overload-warning"
+      }).ok
+    ).toBe(true);
+    expect(
       validateWavePreview({
         waveId: "wave-normal-flow",
         enemyKinds: ["request-runner"],
@@ -177,7 +191,17 @@ describe("TD content and runtime schemas", () => {
         phase: "setup",
         meters: { townHealth: 20, buildBudget: 60, pressure: 0 },
         towers: [],
-        enemies: [],
+        enemies: [
+          {
+            id: "enemy:wave-normal-flow:0:0",
+            enemyId: "request-runner",
+            pathId: "road-main",
+            progress: 0.25,
+            health: 2,
+            status: "active",
+            stallRemainingTicks: 3
+          }
+        ],
         projectiles: [],
         alerts: [],
         buildIntent: { towerId: "worker-tower" },
@@ -216,6 +240,51 @@ describe("TD content and runtime schemas", () => {
         waveId: "wave-normal-flow",
         pathId: "road-main",
         leakDamage: 1
+      }).ok
+    ).toBe(true);
+    expect(
+      validateSimEvent({
+        tick: 4,
+        type: "tower.fired",
+        towerInstanceId: "worker-tower@pad-worker-a#0",
+        towerId: "worker-tower",
+        enemyInstanceId: "enemy:wave-normal-flow:0:0",
+        enemyId: "request-runner",
+        damage: 1,
+        projectileId: "projectile:4:worker-tower@pad-worker-a#0:enemy:wave-normal-flow:0:0"
+      }).ok
+    ).toBe(true);
+    expect(
+      validateSimEvent({
+        tick: 4,
+        type: "enemy.resolved",
+        enemyInstanceId: "enemy:wave-normal-flow:0:0",
+        enemyId: "request-runner",
+        waveId: "wave-normal-flow",
+        pathId: "road-main",
+        reward: 2
+      }).ok
+    ).toBe(true);
+    expect(
+      validateSimEvent({
+        tick: 5,
+        type: "enemy.stalled",
+        towerInstanceId: "queue-snare@pad-queue-a#1",
+        enemyInstanceId: "enemy:wave-normal-flow:0:1",
+        durationTicks: 6
+      }).ok
+    ).toBe(true);
+    expect(
+      validateSimEvent({
+        tick: 6,
+        type: "enemy.routed",
+        towerInstanceId: "load-balancer-gate@pad-load-balancer-a#2",
+        enemyInstanceId: "enemy:wave-hot-shard:0:0",
+        enemyId: "heavy-payload",
+        waveId: "wave-hot-shard",
+        fromPathId: "road-main",
+        toPathId: "road-relief",
+        reason: "healthier-coverage"
       }).ok
     ).toBe(true);
     expect(validateSimEvent({ tick: 0, type: "tower.built", towerId: "worker-tower", padId: "pad-worker-a" }).ok).toBe(true);

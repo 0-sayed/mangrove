@@ -7,7 +7,19 @@ import type {
   TowerDef,
   WaveDef
 } from "@content/schemas";
-import { createEventLog, type EventLog, pushEvent } from "@sim/event-log";
+import { createEventLog, type EventLog, type SimEvent, pushEvent } from "@sim/event-log";
+import { pointAtPathProgress } from "@sim/path-geometry";
+import {
+  QUEUE_SNARE_CAPACITY,
+  QUEUE_SNARE_DURATION_TICKS,
+  TOWER_DEFAULT_PROJECTILE_PROGRESS,
+  coveredPathIdsForTower,
+  deriveConnectionPreviews,
+  enemyMatchesTowerTargets,
+  healthiestPathId,
+  routeCandidatePathIds,
+  scorePathCoverage
+} from "@sim/tower-targeting";
 
 type SimPhase = SimSnapshot["phase"];
 type SnapshotTower = SimSnapshot["towers"][number];
@@ -149,7 +161,10 @@ export function createGame(
   };
 }
 
-function buildTower(state: GameState, command: Extract<Command, { type: "BuildTower" }>): GameState {
+function buildTower(
+  state: GameState,
+  command: Extract<Command, { type: "BuildTower" }>
+): GameState {
   const towerDef = state.towerDefsById[command.towerId];
   const pad = state.map?.buildPads.find((candidate) => candidate.id === command.padId);
 
@@ -267,10 +282,14 @@ function applyCommand(state: GameState, command: Command): GameState {
 }
 
 export function step(state: GameState, commands: readonly Command[] = []): GameState {
+  const tickState: GameState = { ...state, projectiles: [] };
   const commandState = commands.reduce((current, command) => {
     const recorded = {
       ...current,
-      commandHistory: [...current.commandHistory, { tick: current.tick, command: cloneCommand(command) }],
+      commandHistory: [
+        ...current.commandHistory,
+        { tick: current.tick, command: cloneCommand(command) }
+      ],
       eventLog: pushEvent(current.eventLog, {
         tick: current.tick,
         type: "command.received",
@@ -279,11 +298,11 @@ export function step(state: GameState, commands: readonly Command[] = []): GameS
     };
 
     return applyCommand(recorded, command);
-  }, state);
+  }, tickState);
 
   const waveState =
     commandState.phase === "wave" && commandState.activeWaveStartedTick !== undefined
-      ? updatePressure(spawnDueEnemies(moveEnemiesAndApplyLeaks(commandState)))
+      ? updatePressure(moveEnemiesAndApplyLeaks(applyTowerEffects(spawnDueEnemies(commandState))))
       : commandState;
   const nextState = maybeEndWave(waveState);
 
@@ -300,6 +319,14 @@ function elapsedWaveTick(state: GameState): number {
 
 function enemyInstanceId(waveId: string, spawnIndex: number, memberIndex: number): string {
   return `enemy:${waveId}:${String(spawnIndex)}:${String(memberIndex)}`;
+}
+
+function projectileInstanceId(
+  tick: number,
+  towerInstanceId: string,
+  enemyInstanceId: string
+): string {
+  return `projectile:${String(tick)}:${towerInstanceId}:${enemyInstanceId}`;
 }
 
 function derivePressure(enemies: readonly SnapshotEnemy[]): number {
@@ -346,6 +373,14 @@ function moveEnemiesAndApplyLeaks(state: GameState): GameState {
       continue;
     }
 
+    if ((enemy.stallRemainingTicks ?? 0) > 0) {
+      const stallRemainingTicks = (enemy.stallRemainingTicks ?? 0) - 1;
+      enemies.push(
+        stallRemainingTicks > 0 ? { ...enemy, stallRemainingTicks } : omitStallRemainingTicks(enemy)
+      );
+      continue;
+    }
+
     const enemyDef = state.enemyDefsById[enemy.enemyId];
     const path = state.map?.paths.find((candidate) => candidate.id === enemy.pathId);
 
@@ -379,6 +414,296 @@ function moveEnemiesAndApplyLeaks(state: GameState): GameState {
     meters: { ...state.meters, townHealth },
     enemies,
     eventLog
+  };
+}
+
+function omitStallRemainingTicks(enemy: SnapshotEnemy): SnapshotEnemy {
+  const rest = { ...enemy };
+  delete rest.stallRemainingTicks;
+
+  return rest;
+}
+
+function decrementTowerCooldowns(towers: readonly SnapshotTower[]): readonly SnapshotTower[] {
+  return towers.map((tower) => ({
+    ...tower,
+    cooldownRemainingTicks: Math.max(0, tower.cooldownRemainingTicks - 1)
+  }));
+}
+
+function distanceBetweenPoints(
+  start: { readonly x: number; readonly y: number },
+  end: { readonly x: number; readonly y: number }
+): number {
+  return Math.hypot(end.x - start.x, end.y - start.y);
+}
+
+function targetEnemyForTower(
+  state: GameState,
+  tower: SnapshotTower,
+  towerDef: TowerDef,
+  options: { readonly excludeStalled?: boolean } = {}
+): SnapshotEnemy | undefined {
+  const pad = state.map?.buildPads.find((candidate) => candidate.id === tower.padId);
+
+  if (!state.map || !pad) {
+    return undefined;
+  }
+
+  const towerPoint = { x: pad.x, y: pad.y };
+  const candidates = state.enemies.filter((enemy) => {
+    if (enemy.status !== "active") {
+      return false;
+    }
+
+    if (options.excludeStalled && (enemy.stallRemainingTicks ?? 0) > 0) {
+      return false;
+    }
+
+    const enemyDef = state.enemyDefsById[enemy.enemyId];
+    const path = state.map?.paths.find((candidate) => candidate.id === enemy.pathId);
+
+    if (!enemyDef || !path || !enemyMatchesTowerTargets(enemyDef, towerDef.targets)) {
+      return false;
+    }
+
+    return (
+      distanceBetweenPoints(towerPoint, pointAtPathProgress(path, enemy.progress)) <= towerDef.range
+    );
+  });
+
+  return candidates.sort((left, right) => {
+    if (left.progress !== right.progress) {
+      return right.progress - left.progress;
+    }
+
+    if (left.id < right.id) {
+      return -1;
+    }
+
+    if (left.id > right.id) {
+      return 1;
+    }
+
+    return 0;
+  })[0];
+}
+
+function stalledEnemyCountInCoverage(
+  enemies: readonly SnapshotEnemy[],
+  coveredPathIds: readonly string[]
+): number {
+  return enemies.filter(
+    (enemy) =>
+      enemy.status === "active" &&
+      (enemy.stallRemainingTicks ?? 0) > 0 &&
+      coveredPathIds.includes(enemy.pathId)
+  ).length;
+}
+
+function applyTowerEffects(state: GameState): GameState {
+  const wave = activeWave(state);
+
+  if (!wave) {
+    return state;
+  }
+
+  const towers = [...decrementTowerCooldowns(state.towers)];
+  let enemies = [...state.enemies];
+  const projectiles = [...state.projectiles];
+  let buildBudget = state.meters.buildBudget;
+  let eventLog = state.eventLog;
+
+  let currentState: GameState = { ...state, towers, enemies };
+
+  for (let towerIndex = 0; towerIndex < towers.length; towerIndex += 1) {
+    const tower = towers[towerIndex];
+
+    if (!tower || tower.cooldownRemainingTicks > 0) {
+      continue;
+    }
+
+    const towerDef = state.towerDefsById[tower.towerId];
+
+    if (!towerDef) {
+      continue;
+    }
+
+    if (towerDef.kind === "queue") {
+      if (!state.map) {
+        continue;
+      }
+
+      const coveredPathIds = coveredPathIdsForTower(state.map, tower, towerDef);
+
+      if (stalledEnemyCountInCoverage(enemies, coveredPathIds) >= QUEUE_SNARE_CAPACITY) {
+        continue;
+      }
+
+      const target = targetEnemyForTower(currentState, tower, towerDef, { excludeStalled: true });
+
+      if (!target || !coveredPathIds.includes(target.pathId)) {
+        continue;
+      }
+
+      towers[towerIndex] = { ...tower, cooldownRemainingTicks: towerDef.combat.cooldownTicks };
+      enemies = enemies.map((enemy) =>
+        enemy.id === target.id
+          ? { ...enemy, stallRemainingTicks: QUEUE_SNARE_DURATION_TICKS }
+          : enemy
+      );
+      eventLog = pushEvent(eventLog, {
+        tick: state.tick,
+        type: "enemy.stalled",
+        towerInstanceId: tower.id,
+        enemyInstanceId: target.id,
+        durationTicks: QUEUE_SNARE_DURATION_TICKS
+      });
+      currentState = { ...currentState, towers, enemies };
+      continue;
+    }
+
+    if (towerDef.kind !== "worker") {
+      continue;
+    }
+
+    const target = targetEnemyForTower(currentState, tower, towerDef);
+
+    if (!target) {
+      continue;
+    }
+
+    const enemyDef = state.enemyDefsById[target.enemyId];
+
+    if (!enemyDef) {
+      continue;
+    }
+
+    const projectileId = projectileInstanceId(state.tick, tower.id, target.id);
+    const health = Math.max(0, target.health - towerDef.combat.damage);
+    towers[towerIndex] = { ...tower, cooldownRemainingTicks: towerDef.combat.cooldownTicks };
+    projectiles.push({
+      id: projectileId,
+      towerInstanceId: tower.id,
+      enemyInstanceId: target.id,
+      progress: TOWER_DEFAULT_PROJECTILE_PROGRESS
+    });
+    eventLog = pushEvent(eventLog, {
+      tick: state.tick,
+      type: "tower.fired",
+      towerInstanceId: tower.id,
+      towerId: tower.towerId,
+      enemyInstanceId: target.id,
+      enemyId: target.enemyId,
+      damage: towerDef.combat.damage,
+      projectileId
+    });
+
+    if (health <= 0) {
+      enemies = enemies.filter((enemy) => enemy.id !== target.id);
+      buildBudget += enemyDef.reward;
+      eventLog = pushEvent(eventLog, {
+        tick: state.tick,
+        type: "enemy.resolved",
+        enemyInstanceId: target.id,
+        enemyId: target.enemyId,
+        waveId: wave.id,
+        pathId: target.pathId,
+        reward: enemyDef.reward
+      });
+    } else {
+      enemies = enemies.map((enemy) => (enemy.id === target.id ? { ...enemy, health } : enemy));
+    }
+
+    currentState = { ...currentState, towers, enemies };
+  }
+
+  return {
+    ...state,
+    meters: { ...state.meters, buildBudget },
+    towers,
+    enemies,
+    projectiles,
+    eventLog
+  };
+}
+
+function chooseSpawnPath(
+  state: GameState,
+  enemyInstanceId: string,
+  enemyId: string,
+  waveId: string,
+  authoredPathId: string
+): {
+  readonly pathId: string;
+  readonly routedEvent?: SimEvent;
+} {
+  if (!state.map) {
+    return { pathId: authoredPathId };
+  }
+
+  const map = state.map;
+  const candidatePathIds = routeCandidatePathIds(map, authoredPathId);
+
+  if (candidatePathIds.length < 2) {
+    return { pathId: authoredPathId };
+  }
+
+  const loadBalancer = state.towers.find((tower) => {
+    const towerDef = state.towerDefsById[tower.towerId];
+
+    return (
+      towerDef?.kind === "load-balancer" &&
+      candidatePathIds.every((candidatePathId) =>
+        coveredPathIdsForTower(map, tower, towerDef).includes(candidatePathId)
+      )
+    );
+  });
+
+  if (!loadBalancer) {
+    return { pathId: authoredPathId };
+  }
+
+  const routedPathId = healthiestPathId({
+    map,
+    pathId: authoredPathId,
+    candidatePathIds,
+    towers: state.towers,
+    towerDefsById: state.towerDefsById,
+    enemies: state.enemies
+  });
+  const authoredPathScore = scorePathCoverage({
+    map,
+    pathId: authoredPathId,
+    towers: state.towers,
+    towerDefsById: state.towerDefsById,
+    enemies: state.enemies
+  });
+  const routedPathScore = scorePathCoverage({
+    map,
+    pathId: routedPathId,
+    towers: state.towers,
+    towerDefsById: state.towerDefsById,
+    enemies: state.enemies
+  });
+
+  if (routedPathId === authoredPathId || routedPathScore <= authoredPathScore) {
+    return { pathId: authoredPathId };
+  }
+
+  return {
+    pathId: routedPathId,
+    routedEvent: {
+      tick: state.tick,
+      type: "enemy.routed",
+      towerInstanceId: loadBalancer.id,
+      enemyInstanceId,
+      enemyId,
+      waveId,
+      fromPathId: authoredPathId,
+      toPathId: routedPathId,
+      reason: "healthier-coverage"
+    }
   };
 }
 
@@ -422,10 +747,22 @@ function spawnDueEnemies(state: GameState): GameState {
     enemies ??= [...state.enemies];
 
     const id = enemyInstanceId(wave.id, spawnIndex, memberIndex);
+    const spawnPath = chooseSpawnPath(
+      { ...state, enemies, eventLog },
+      id,
+      spawn.enemyId,
+      wave.id,
+      spawn.pathId
+    );
+
+    if (spawnPath.routedEvent) {
+      eventLog = pushEvent(eventLog, spawnPath.routedEvent);
+    }
+
     enemies.push({
       id,
       enemyId: spawn.enemyId,
-      pathId: spawn.pathId,
+      pathId: spawnPath.pathId,
       progress: 0,
       health: enemyDef.maxHealth,
       status: "active"
@@ -436,7 +773,7 @@ function spawnDueEnemies(state: GameState): GameState {
       enemyInstanceId: id,
       enemyId: spawn.enemyId,
       waveId: wave.id,
-      pathId: spawn.pathId
+      pathId: spawnPath.pathId
     });
   }
 
@@ -463,7 +800,11 @@ function maybeEndWave(state: GameState): GameState {
   const wave = activeWave(state);
   const lastSpawnTick = finalSpawnElapsedTick(wave);
 
-  if (!wave || elapsed <= lastSpawnTick || state.enemies.some((enemy) => enemy.status === "active")) {
+  if (
+    !wave ||
+    elapsed <= lastSpawnTick ||
+    state.enemies.some((enemy) => enemy.status === "active")
+  ) {
     return state;
   }
 
@@ -478,7 +819,11 @@ function maybeEndWave(state: GameState): GameState {
     towerDefsById: state.towerDefsById,
     enemyDefsById: state.enemyDefsById,
     ...(state.map ? { map: state.map } : {}),
-    meters: { ...state.meters, buildBudget: state.meters.buildBudget + wave.budgetReward, pressure: 0 },
+    meters: {
+      ...state.meters,
+      buildBudget: state.meters.buildBudget + wave.budgetReward,
+      pressure: 0
+    },
     towers: state.towers,
     enemies: state.enemies,
     projectiles: state.projectiles,
@@ -523,8 +868,41 @@ function rangePreviews(state: GameState): SimSnapshot["previews"]["ranges"] {
     .map((pad) => ({ towerId, padId: pad.id, radius: towerDef.range }));
 }
 
+function connectionPreviews(state: GameState): SimSnapshot["previews"]["connections"] {
+  if (!state.map) {
+    return [];
+  }
+
+  return deriveConnectionPreviews({
+    map: state.map,
+    towers: state.towers,
+    towerDefsById: state.towerDefsById,
+    enemies: state.enemies
+  });
+}
+
+function deriveAlerts(
+  stateAlerts: readonly string[],
+  connections: readonly SimSnapshot["previews"]["connections"][number][]
+): string[] {
+  const alerts = new Set(stateAlerts);
+
+  for (const connection of connections) {
+    if (connection.kind === "weak-coverage") {
+      alerts.add(`weak-coverage:${connection.sourceId}`);
+    }
+
+    if (connection.kind === "overload-warning") {
+      alerts.add(`overload:${connection.sourceId}`);
+    }
+  }
+
+  return [...alerts];
+}
+
 export function toSnapshot(state: GameState): SimSnapshot {
   const nextWave = nextIncompleteWave(state);
+  const connections = connectionPreviews(state);
 
   return {
     tick: state.tick,
@@ -533,13 +911,13 @@ export function toSnapshot(state: GameState): SimSnapshot {
     towers: state.towers.map((tower) => ({ ...tower })),
     enemies: state.enemies.map((enemy) => ({ ...enemy })),
     projectiles: state.projectiles.map((projectile) => ({ ...projectile })),
-    alerts: [...state.alerts],
+    alerts: deriveAlerts(state.alerts, connections),
     buildIntent: { ...state.buildIntent },
     selection: { ...state.selection },
     hover: { ...state.hover },
     previews: {
       ranges: rangePreviews(state),
-      connections: [],
+      connections,
       ...(nextWave
         ? {
             nextWave: {
