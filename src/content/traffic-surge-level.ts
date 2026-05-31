@@ -16,7 +16,7 @@ export const trafficSurgeMap: MapDef = {
         { x: 11, y: 6 },
         { x: 15, y: 6 }
       ],
-      length: 16
+      length: 17.07
     },
     {
       id: "road-relief",
@@ -30,7 +30,7 @@ export const trafficSurgeMap: MapDef = {
         { x: 12, y: 5 },
         { x: 15, y: 6 }
       ],
-      length: 17
+      length: 16.6
     }
   ],
   buildPads: [

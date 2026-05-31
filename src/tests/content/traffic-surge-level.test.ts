@@ -85,6 +85,22 @@ describe("Traffic Surge At The Gate content", () => {
     }
   });
 
+  it("keeps path lengths aligned with authored geometry", () => {
+    for (const path of trafficSurgeMap.paths) {
+      const geometricLength = path.points.slice(1).reduce((total, point, index) => {
+        const previous = path.points[index];
+
+        if (!previous) {
+          return total;
+        }
+
+        return total + Math.hypot(point.x - previous.x, point.y - previous.y);
+      }, 0);
+
+      expect(path.length).toBeCloseTo(geometricLength, 2);
+    }
+  });
+
   it("places pads for first-level tower-defense decisions", () => {
     const workerPad = trafficSurgeMap.buildPads.find((pad) => pad.id === "pad-worker-a");
     const queuePad = trafficSurgeMap.buildPads.find((pad) => pad.id === "pad-queue-a");
