@@ -9,7 +9,7 @@ const LANE_STROKE_RGBS = [
   { red: 47, green: 82, blue: 70 },
   { red: 50, green: 96, blue: 83 }
 ] as const;
-const WORKER_PAD_WORLD_POSITION = { x: 438, y: 226 };
+const WORKER_PAD_WORLD_POSITION = { x: 438, y: 154 };
 const WORKER_TOWER_COST = 30;
 const LANE_OVERLAY_REGION = {
   x: 130,
@@ -19,12 +19,12 @@ const LANE_OVERLAY_REGION = {
 } as const;
 const SPAWN_ASSET_REGION = {
   x: 126,
-  y: 274,
+  y: 346,
   width: 48,
   height: 48
 } as const;
 const MIN_CANVAS_VIEWPORT_COVERAGE = 0.72;
-const NORMAL_FLOW_ADVANCE_MS = 5_000;
+const NORMAL_FLOW_TO_RECAP_ADVANCE_MS = 10_000;
 
 interface Rgb {
   readonly red: number;
@@ -267,14 +267,15 @@ test("renders the playable shell and accepts browser battlefield input", async (
   await expect(page.getByText("Watch pressure")).toHaveCount(0);
   await expect(page.getByText("wave-normal-flow")).toHaveCount(0);
 
-  await page.clock.fastForward(NORMAL_FLOW_ADVANCE_MS);
+  await page.clock.fastForward(NORMAL_FLOW_TO_RECAP_ADVANCE_MS);
   await expect
     .poll(async () => Number(await page.getByTestId("sim-tick").textContent()))
-    .toBeGreaterThan(40);
+    .toBeGreaterThan(90);
 
-  await expect(page.getByLabel("Run phase")).toContainText("Complete", {
+  await expect(page.getByLabel("Run phase")).toContainText("Recap", {
     timeout: 5_000
   });
+  await expect(page.getByRole("button", { name: "Start Burst Surge" })).toBeEnabled();
   await expect(page.getByText("Build defenses before Flood Wave")).toHaveCount(0);
   expect(consoleErrors).toEqual([]);
 });

@@ -1,10 +1,10 @@
 import {
-  tdContractFixtureEnemyDefs,
-  tdContractFixtureLevel,
-  tdContractFixtureMap,
-  tdContractFixtureTowerDefs,
+  trafficSurgeEnemyDefs,
+  trafficSurgeLevel,
+  trafficSurgeMap,
+  trafficSurgeTowerDefs,
   workerTowerDef
-} from "@content/td-contract-fixture";
+} from "@content/traffic-surge-level";
 import type { Command, SimSnapshot } from "@content/schemas";
 import { createGame, step, toSnapshot, type GameState } from "@sim/game";
 
@@ -39,10 +39,10 @@ export interface RunControls {
 
 export function createInitialRun(seed = DEFAULT_RUN_SEED): GameRun {
   return {
-    game: createGame(tdContractFixtureLevel, seed, {
-      towerDefs: tdContractFixtureTowerDefs,
-      enemyDefs: tdContractFixtureEnemyDefs,
-      map: tdContractFixtureMap
+    game: createGame(trafficSurgeLevel, seed, {
+      towerDefs: trafficSurgeTowerDefs,
+      enemyDefs: trafficSurgeEnemyDefs,
+      map: trafficSurgeMap
     }),
     pendingCommands: []
   };

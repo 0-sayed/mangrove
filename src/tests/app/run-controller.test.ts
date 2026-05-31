@@ -12,7 +12,7 @@ import {
 } from "@app/run-controller";
 
 describe("run controller", () => {
-  it("bootstraps the TD fixture and exposes setup controls", () => {
+  it("bootstraps the authored TD level and exposes setup controls", () => {
     const initial = createInitialRun(12345);
     const snapshot = toRunSnapshot(initial);
     const controls = getRunControls(initial.game);
@@ -85,15 +85,19 @@ describe("run controller", () => {
     ).toBe(true);
   });
 
-  it("reports auto-advance only while a TD wave is running", () => {
+  it("reports auto-advance only while an authored wave is running", () => {
     const started = applyRunCommand(createInitialRun(12345), {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const completed = advanceRun(started, 52);
+    const completed = advanceRun(started, 110);
 
     expect(getRunControls(started.game).isAutoAdvancing).toBe(true);
-    expect(toRunSnapshot(completed).phase).toBe("complete");
-    expect(getRunControls(completed.game).isAutoAdvancing).toBe(false);
+    expect(toRunSnapshot(completed).phase).toBe("recap");
+    expect(getRunControls(completed.game)).toMatchObject({
+      nextWaveId: "wave-burst-surge",
+      nextWaveLabel: "Burst Surge",
+      isAutoAdvancing: false
+    });
   });
 });
