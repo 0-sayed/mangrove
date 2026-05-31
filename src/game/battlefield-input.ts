@@ -23,7 +23,7 @@ export function buildPadCommandForWorldPoint(
   snapshot: SimSnapshot,
   point: WorldPoint
 ): BuildTowerCommand | undefined {
-  if (snapshot.phase !== "setup") {
+  if (snapshot.phase !== "setup" && snapshot.phase !== "recap") {
     return undefined;
   }
 

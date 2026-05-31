@@ -135,7 +135,21 @@ describe("battlefield input commands", () => {
     ).toEqual({ type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" });
   });
 
-  it("does not map build pad clicks outside setup, on occupied pads, or below cost", () => {
+  it("maps a recap click on an empty worker pad to BuildTower", () => {
+    const point = buildPadWorldPosition(tdContractFixtureMap, "pad-worker-a");
+
+    expect(
+      buildPadCommandForWorldPoint(
+        tdContractFixtureLevel,
+        tdContractFixtureMap,
+        tdContractFixtureTowerDefs,
+        snapshotWith({ phase: "recap" }),
+        point
+      )
+    ).toEqual({ type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" });
+  });
+
+  it("does not map build pad clicks during a wave, on occupied pads, or below cost", () => {
     const point = buildPadWorldPosition(tdContractFixtureMap, "pad-worker-a");
 
     expect(

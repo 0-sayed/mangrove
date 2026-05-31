@@ -92,7 +92,7 @@ export function getRunControls(game: GameState): RunControls {
     nextWaveLabel: nextWave ? labelWave(game, nextWave.id) : "Complete",
     canStartNextWave: nextWave !== undefined && (game.phase === "setup" || game.phase === "recap"),
     canBuildWorkerTower:
-      game.phase === "setup" &&
+      (game.phase === "setup" || game.phase === "recap") &&
       workerTower !== undefined &&
       workerPadAvailable &&
       game.meters.buildBudget >= workerTowerCost,

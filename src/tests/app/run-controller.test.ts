@@ -73,6 +73,18 @@ describe("run controller", () => {
     expect(snapshot.meters.buildBudget).toBe(30);
   });
 
+  it("allows worker tower builds from recap controls", () => {
+    const initial = createInitialRun(12345);
+
+    expect(
+      getRunControls({
+        ...initial.game,
+        phase: "recap",
+        completedWaveIds: ["wave-normal-flow"]
+      }).canBuildWorkerTower
+    ).toBe(true);
+  });
+
   it("reports auto-advance only while a contract-only wave is running", () => {
     const started = applyRunCommand(createInitialRun(12345), {
       type: "StartWave",
