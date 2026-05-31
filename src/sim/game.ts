@@ -152,7 +152,7 @@ function buildTower(state: GameState, command: Extract<Command, { type: "BuildTo
   const pad = state.map?.buildPads.find((candidate) => candidate.id === command.padId);
 
   if (
-    state.phase !== "setup" ||
+    (state.phase !== "setup" && state.phase !== "recap") ||
     !towerDef ||
     !pad ||
     !state.config.availableTowerIds.includes(command.towerId) ||
@@ -322,7 +322,7 @@ function maybeEndContractOnlyWave(state: GameState): GameState {
     towerDefsById: state.towerDefsById,
     enemyDefsById: state.enemyDefsById,
     ...(state.map ? { map: state.map } : {}),
-    meters: state.meters,
+    meters: { ...state.meters, buildBudget: state.meters.buildBudget + wave.budgetReward },
     towers: state.towers,
     enemies: state.enemies,
     projectiles: state.projectiles,

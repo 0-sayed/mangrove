@@ -2,7 +2,6 @@ import Phaser from "phaser";
 
 import type { Command, MapDef, SimSnapshot, TowerDef } from "@content/schemas";
 import {
-  activeEnemySprites,
   BATTLEFIELD_VIEW,
   battlefieldTowers,
   buildPadWorldPosition,
@@ -233,8 +232,6 @@ export class BattlefieldScene extends Phaser.Scene {
         this.#towerRenders.delete(towerId);
       }
     }
-
-    activeEnemySprites();
   }
 
   private ensureTowerRender(tower: SimSnapshot["towers"][number]): TowerRender {

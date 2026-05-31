@@ -63,7 +63,3 @@ export function towerBodyAnimationId(def: Pick<TowerDef, "kind"> | undefined): s
 
   return "building-ingress-tower-flowing";
 }
-
-export function activeEnemySprites(): readonly SimSnapshot["enemies"][number][] {
-  return [];
-}

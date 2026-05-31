@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { tdContractFixtureMap } from "@content/td-contract-fixture";
 import type { MapDef, SimSnapshot } from "@content/schemas";
 import {
-  activeEnemySprites,
   BATTLEFIELD_VIEW,
   battlefieldTowers,
   buildPadWorldPosition,
@@ -103,9 +102,5 @@ describe("battlefield view model", () => {
 
   it("maps worker towers to the worker tower body asset", () => {
     expect(towerBodyAnimationId({ kind: "worker" })).toBe("building-worker-tower-idle");
-  });
-
-  it("keeps active enemy sprite rendering empty for TD001", () => {
-    expect(activeEnemySprites()).toEqual([]);
   });
 });

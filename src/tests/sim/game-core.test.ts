@@ -7,7 +7,7 @@ import {
   tdContractFixtureTowerDefs,
   workerTowerDef
 } from "@content/td-contract-fixture";
-import type { Command, LevelConfig, TowerDef } from "@content/schemas";
+import type { Command, LevelConfig, TowerDef, WaveDef } from "@content/schemas";
 import { validateSimSnapshot } from "@content/schemas";
 import { createGame, step, toSnapshot, type GameState } from "@sim/game";
 
@@ -27,6 +27,25 @@ function advance(state: GameState, ticks: number): GameState {
   }
 
   return current;
+}
+
+function createTwoWaveConfig(): LevelConfig {
+  const firstWave = tdContractFixtureLevel.waves[0];
+
+  if (!firstWave) {
+    throw new Error("Expected TD fixture to include a wave.");
+  }
+
+  const followUpWave: WaveDef = {
+    ...firstWave,
+    id: "wave-follow-up",
+    displayName: "Follow Up"
+  };
+
+  return {
+    ...tdContractFixtureLevel,
+    waves: [firstWave, followUpWave]
+  };
 }
 
 describe("TD simulator core", () => {
@@ -225,6 +244,38 @@ describe("TD simulator core", () => {
     expect(
       [...unavailable.eventLog.events, ...invalidPadKind.eventLog.events, ...insufficientBudget.eventLog.events]
     ).not.toContainEqual(expect.objectContaining({ type: "tower.built" }));
+  });
+
+  it("allows building towers during recap between waves", () => {
+    const twoWaveConfig = createTwoWaveConfig();
+    const started = step(createFixtureGame(twoWaveConfig), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const recap = advance(started, 41);
+    const built = step(recap, [{ type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" }]);
+
+    expect(recap.phase).toBe("recap");
+    expect(built.towers).toHaveLength(1);
+    expect(built.meters.buildBudget).toBe(recap.meters.buildBudget - workerTowerDef.cost);
+    expect(built.eventLog.events).toContainEqual({
+      tick: recap.tick,
+      type: "tower.built",
+      towerId: "worker-tower",
+      padId: "pad-worker-a"
+    });
+  });
+
+  it("credits wave budget rewards when waves complete", () => {
+    const twoWaveConfig = createTwoWaveConfig();
+    const rewardedWave = twoWaveConfig.waves[0];
+
+    if (!rewardedWave) {
+      throw new Error("Expected two-wave fixture to include a rewarded wave.");
+    }
+
+    const started = step(createFixtureGame(twoWaveConfig), [{ type: "StartWave", waveId: "wave-normal-flow" }]);
+    const recap = advance(started, 41);
+
+    expect(recap.phase).toBe("recap");
+    expect(recap.meters.buildBudget).toBe(tdContractFixtureLevel.startingState.buildBudget + rewardedWave.budgetReward);
   });
 
   it("exposes range previews for the current build intent", () => {
