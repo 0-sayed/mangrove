@@ -24,6 +24,31 @@ describe("sim state hash", () => {
     expect(hashState(first)).not.toBe(hashState(second));
   });
 
+  it("hashes active enemy state independent of object key order", () => {
+    const first = {
+      enemies: [
+        {
+          id: "enemy:wave-normal-flow:0:0",
+          enemyId: "request-runner",
+          pathId: "road-main",
+          progress: 0.5
+        }
+      ]
+    };
+    const second = {
+      enemies: [
+        {
+          progress: 0.5,
+          pathId: "road-main",
+          enemyId: "request-runner",
+          id: "enemy:wave-normal-flow:0:0"
+        }
+      ]
+    };
+
+    expect(hashState(first)).toBe(hashState(second));
+  });
+
   it("rejects non-finite numbers", () => {
     expect(() => stableStringify({ townHealth: Number.NaN })).toThrow("finite number");
     expect(() => stableStringify({ townHealth: Number.POSITIVE_INFINITY })).toThrow("finite number");

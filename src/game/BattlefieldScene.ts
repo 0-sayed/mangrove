@@ -3,8 +3,10 @@ import Phaser from "phaser";
 import type { Command, MapDef, SimSnapshot, TowerDef } from "@content/schemas";
 import {
   BATTLEFIELD_VIEW,
+  battlefieldEnemies,
   battlefieldTowers,
   buildPadWorldPosition,
+  enemyWorldPosition,
   pathWorldPoints,
   towerBodyAnimationId
 } from "@game/battlefield-view";
@@ -28,11 +30,16 @@ interface TowerRender {
   readonly label: Phaser.GameObjects.Text;
 }
 
+interface EnemyRender {
+  readonly body: Phaser.GameObjects.Sprite;
+}
+
 const BATTLEFIELD_DEPTH = {
   terrain: 0,
   terrainDetail: 2,
   path: 10,
   buildPad: 20,
+  enemy: 25,
   tower: 30,
   badge: 50,
   label: 70
@@ -44,6 +51,7 @@ export class BattlefieldScene extends Phaser.Scene {
   readonly #onCommand: (command: Command) => void;
   #snapshot: SimSnapshot;
   readonly #towerRenders = new Map<string, TowerRender>();
+  readonly #enemyRenders = new Map<string, EnemyRender>();
 
   public constructor(options: BattlefieldSceneOptions) {
     super("battlefield-scene");
@@ -218,10 +226,16 @@ export class BattlefieldScene extends Phaser.Scene {
 
   private renderSnapshot(): void {
     const visibleTowerIds = new Set<string>();
+    const visibleEnemyIds = new Set<string>();
 
     for (const tower of battlefieldTowers(this.#snapshot)) {
       visibleTowerIds.add(tower.id);
       this.ensureTowerRender(tower);
+    }
+
+    for (const enemy of battlefieldEnemies(this.#snapshot)) {
+      visibleEnemyIds.add(enemy.id);
+      this.ensureEnemyRender(enemy);
     }
 
     for (const [towerId, render] of this.#towerRenders) {
@@ -230,6 +244,13 @@ export class BattlefieldScene extends Phaser.Scene {
         render.badge.destroy();
         render.label.destroy();
         this.#towerRenders.delete(towerId);
+      }
+    }
+
+    for (const [enemyId, render] of this.#enemyRenders) {
+      if (!visibleEnemyIds.has(enemyId)) {
+        render.body.destroy();
+        this.#enemyRenders.delete(enemyId);
       }
     }
   }
@@ -266,6 +287,23 @@ export class BattlefieldScene extends Phaser.Scene {
 
     const render = { body, badge, label };
     this.#towerRenders.set(tower.id, render);
+
+    return render;
+  }
+
+  private ensureEnemyRender(enemy: SimSnapshot["enemies"][number]): EnemyRender {
+    const position = enemyWorldPosition(this.#map, enemy.pathId, enemy.progress);
+    const existingRender = this.#enemyRenders.get(enemy.id);
+
+    if (existingRender) {
+      existingRender.body.setPosition(position.x, position.y);
+      return existingRender;
+    }
+
+    const render = {
+      body: this.addAssetSprite(position.x, position.y, "packet-useful", 0.72, BATTLEFIELD_DEPTH.enemy)
+    };
+    this.#enemyRenders.set(enemy.id, render);
 
     return render;
   }

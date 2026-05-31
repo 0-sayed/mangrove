@@ -14,6 +14,8 @@ type SnapshotTower = SimSnapshot["towers"][number];
 type SnapshotEnemy = SimSnapshot["enemies"][number];
 type SnapshotProjectile = SimSnapshot["projectiles"][number];
 
+const PATH_END_EPSILON = Number.EPSILON * 16;
+
 export interface GameOptions {
   readonly towerDefs?: readonly TowerDef[];
   readonly enemyDefs?: readonly EnemyDef[];
@@ -279,16 +281,170 @@ export function step(state: GameState, commands: readonly Command[] = []): GameS
     return applyCommand(recorded, command);
   }, state);
 
-  const nextState =
+  const waveState =
     commandState.phase === "wave" && commandState.activeWaveStartedTick !== undefined
-      ? maybeEndContractOnlyWave(commandState)
+      ? updatePressure(spawnDueEnemies(moveEnemiesAndApplyLeaks(commandState)))
       : commandState;
+  const nextState = maybeEndWave(waveState);
 
   return { ...nextState, tick: nextState.tick + 1 };
 }
 
 function activeWave(state: GameState): WaveDef | undefined {
   return state.config.waves.find((wave) => wave.id === state.activeWaveId);
+}
+
+function elapsedWaveTick(state: GameState): number {
+  return state.tick - (state.activeWaveStartedTick ?? state.tick);
+}
+
+function enemyInstanceId(waveId: string, spawnIndex: number, memberIndex: number): string {
+  return `enemy:${waveId}:${String(spawnIndex)}:${String(memberIndex)}`;
+}
+
+function derivePressure(enemies: readonly SnapshotEnemy[]): number {
+  let activeCount = 0;
+  let nearLeakCount = 0;
+
+  for (const enemy of enemies) {
+    if (enemy.status !== "active") {
+      continue;
+    }
+
+    activeCount += 1;
+
+    if (enemy.progress >= 0.75) {
+      nearLeakCount += 1;
+    }
+  }
+
+  return activeCount + nearLeakCount * 2;
+}
+
+function updatePressure(state: GameState): GameState {
+  return { ...state, meters: { ...state.meters, pressure: derivePressure(state.enemies) } };
+}
+
+function reachesPathEnd(traveledDistance: number, pathLength: number): boolean {
+  return traveledDistance + Math.max(1, pathLength) * PATH_END_EPSILON >= pathLength;
+}
+
+function moveEnemiesAndApplyLeaks(state: GameState): GameState {
+  const wave = activeWave(state);
+
+  if (!wave) {
+    return state;
+  }
+
+  let townHealth = state.meters.townHealth;
+  let eventLog = state.eventLog;
+  const enemies: SnapshotEnemy[] = [];
+
+  for (const enemy of state.enemies) {
+    if (enemy.status !== "active") {
+      enemies.push(enemy);
+      continue;
+    }
+
+    const enemyDef = state.enemyDefsById[enemy.enemyId];
+    const path = state.map?.paths.find((candidate) => candidate.id === enemy.pathId);
+
+    if (!enemyDef || !path) {
+      enemies.push(enemy);
+      continue;
+    }
+
+    const traveledDistance = enemy.progress * path.length + enemyDef.speed;
+    const progress = Math.min(1, traveledDistance / path.length);
+
+    if (reachesPathEnd(traveledDistance, path.length)) {
+      townHealth = Math.max(0, townHealth - enemyDef.leakDamage);
+      eventLog = pushEvent(eventLog, {
+        tick: state.tick,
+        type: "enemy.leaked",
+        enemyInstanceId: enemy.id,
+        enemyId: enemy.enemyId,
+        waveId: wave.id,
+        pathId: enemy.pathId,
+        leakDamage: enemyDef.leakDamage
+      });
+      continue;
+    }
+
+    enemies.push({ ...enemy, progress });
+  }
+
+  return {
+    ...state,
+    meters: { ...state.meters, townHealth },
+    enemies,
+    eventLog
+  };
+}
+
+function spawnDueEnemies(state: GameState): GameState {
+  const wave = activeWave(state);
+
+  if (!wave) {
+    return state;
+  }
+
+  const elapsed = elapsedWaveTick(state);
+  let eventLog = state.eventLog;
+  let enemies: SnapshotEnemy[] | undefined;
+
+  for (let spawnIndex = 0; spawnIndex < wave.spawns.length; spawnIndex += 1) {
+    const spawn = wave.spawns[spawnIndex];
+
+    if (!spawn || elapsed < spawn.tick) {
+      continue;
+    }
+
+    const relativeTick = elapsed - spawn.tick;
+
+    if (relativeTick % spawn.intervalTicks !== 0) {
+      continue;
+    }
+
+    const memberIndex = relativeTick / spawn.intervalTicks;
+
+    if (memberIndex >= spawn.count) {
+      continue;
+    }
+
+    const enemyDef = state.enemyDefsById[spawn.enemyId];
+    const path = state.map?.paths.find((candidate) => candidate.id === spawn.pathId);
+
+    if (!enemyDef || !path) {
+      continue;
+    }
+
+    enemies ??= [...state.enemies];
+
+    const id = enemyInstanceId(wave.id, spawnIndex, memberIndex);
+    enemies.push({
+      id,
+      enemyId: spawn.enemyId,
+      pathId: spawn.pathId,
+      progress: 0,
+      health: enemyDef.maxHealth,
+      status: "active"
+    });
+    eventLog = pushEvent(eventLog, {
+      tick: state.tick,
+      type: "enemy.spawned",
+      enemyInstanceId: id,
+      enemyId: spawn.enemyId,
+      waveId: wave.id,
+      pathId: spawn.pathId
+    });
+  }
+
+  if (!enemies) {
+    return state;
+  }
+
+  return { ...state, enemies, eventLog };
 }
 
 function nextIncompleteWave(state: GameState): WaveDef | undefined {
@@ -302,12 +458,12 @@ function hasCompletedAllWaves(
   return state.config.waves.every((wave) => completedWaveIds.includes(wave.id));
 }
 
-function maybeEndContractOnlyWave(state: GameState): GameState {
-  const elapsed = state.tick - (state.activeWaveStartedTick ?? state.tick);
+function maybeEndWave(state: GameState): GameState {
+  const elapsed = elapsedWaveTick(state);
   const wave = activeWave(state);
   const lastSpawnTick = finalSpawnElapsedTick(wave);
 
-  if (!wave || elapsed <= lastSpawnTick) {
+  if (!wave || elapsed <= lastSpawnTick || state.enemies.some((enemy) => enemy.status === "active")) {
     return state;
   }
 
@@ -322,7 +478,7 @@ function maybeEndContractOnlyWave(state: GameState): GameState {
     towerDefsById: state.towerDefsById,
     enemyDefsById: state.enemyDefsById,
     ...(state.map ? { map: state.map } : {}),
-    meters: { ...state.meters, buildBudget: state.meters.buildBudget + wave.budgetReward },
+    meters: { ...state.meters, buildBudget: state.meters.buildBudget + wave.budgetReward, pressure: 0 },
     towers: state.towers,
     enemies: state.enemies,
     projectiles: state.projectiles,

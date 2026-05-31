@@ -90,7 +90,7 @@ describe("run controller", () => {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const completed = advanceRun(started, 92);
+    const completed = advanceRun(started, 110);
 
     expect(getRunControls(started.game).isAutoAdvancing).toBe(true);
     expect(toRunSnapshot(completed).phase).toBe("recap");

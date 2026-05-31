@@ -4,8 +4,10 @@ import { tdContractFixtureMap } from "@content/td-contract-fixture";
 import type { MapDef, SimSnapshot } from "@content/schemas";
 import {
   BATTLEFIELD_VIEW,
+  battlefieldEnemies,
   battlefieldTowers,
   buildPadWorldPosition,
+  enemyWorldPosition,
   pathWorldPoints,
   towerBodyAnimationId
 } from "@game/battlefield-view";
@@ -89,6 +91,12 @@ describe("battlefield view model", () => {
     ]);
   });
 
+  it("maps enemy progress to a world position along the authored path", () => {
+    expect(enemyWorldPosition(tdContractFixtureMap, "road-main", 0)).toEqual({ x: 150, y: 298 });
+    expect(enemyWorldPosition(tdContractFixtureMap, "road-main", 0.5)).toEqual({ x: 453, y: 306 });
+    expect(enemyWorldPosition(tdContractFixtureMap, "road-main", 1)).toEqual({ x: 726, y: 442 });
+  });
+
   it("maps build pads to world positions", () => {
     expect(buildPadWorldPosition(tdContractFixtureMap, "pad-worker-a")).toEqual({
       x: BATTLEFIELD_VIEW.originX + 4 * BATTLEFIELD_VIEW.tileSize,
@@ -98,6 +106,10 @@ describe("battlefield view model", () => {
 
   it("uses snapshot towers as the battlefield render source", () => {
     expect(battlefieldTowers(snapshot).map((tower) => tower.towerId)).toEqual(["worker-tower"]);
+  });
+
+  it("uses active snapshot enemies as the battlefield render source", () => {
+    expect(battlefieldEnemies(snapshot).map((enemy) => enemy.id)).toEqual(["enemy-1"]);
   });
 
   it("maps worker towers to the worker tower body asset", () => {

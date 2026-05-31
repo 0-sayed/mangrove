@@ -79,7 +79,7 @@ describe("Hud", () => {
       type: "StartWave",
       waveId: "wave-normal-flow"
     });
-    const recap = advanceRun(started, 92);
+    const recap = advanceRun(started, 110);
     const finalWaveStarted = applyRunCommand(
       advanceRun(
         applyRunCommand(recap, {
@@ -93,7 +93,7 @@ describe("Hud", () => {
         waveId: "wave-hot-shard"
       }
     );
-    const completed = advanceRun(finalWaveStarted, 120);
+    const completed = advanceRun(finalWaveStarted, 150);
 
     const runningHtml = renderToString(
       <Hud

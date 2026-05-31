@@ -129,6 +129,15 @@ const StartingStateSchema = Type.Object(
   { additionalProperties: false }
 );
 
+const SnapshotMetersSchema = Type.Object(
+  {
+    townHealth: NonNegativeNumberSchema,
+    buildBudget: NonNegativeNumberSchema,
+    pressure: NonNegativeNumberSchema
+  },
+  { additionalProperties: false }
+);
+
 const RecapLawSchema = Type.Object(
   {
     id: IdSchema,
@@ -229,7 +238,7 @@ const SimSnapshotSchema = Type.Object(
   {
     tick: Type.Integer({ minimum: 0 }),
     phase: SimPhaseSchema,
-    meters: StartingStateSchema,
+    meters: SnapshotMetersSchema,
     towers: Type.Array(SnapshotTowerSchema),
     enemies: Type.Array(SnapshotEnemySchema),
     projectiles: Type.Array(SnapshotProjectileSchema),
@@ -250,6 +259,29 @@ const SimEventSchema = Type.Union([
   ),
   Type.Object({ tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.started"), waveId: IdSchema }, { additionalProperties: false }),
   Type.Object({ tick: Type.Integer({ minimum: 0 }), type: Type.Literal("wave.ended"), waveId: IdSchema }, { additionalProperties: false }),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.spawned"),
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      waveId: IdSchema,
+      pathId: IdSchema
+    },
+    { additionalProperties: false }
+  ),
+  Type.Object(
+    {
+      tick: Type.Integer({ minimum: 0 }),
+      type: Type.Literal("enemy.leaked"),
+      enemyInstanceId: IdSchema,
+      enemyId: IdSchema,
+      waveId: IdSchema,
+      pathId: IdSchema,
+      leakDamage: PositiveIntegerSchema
+    },
+    { additionalProperties: false }
+  ),
   Type.Object(
     { tick: Type.Integer({ minimum: 0 }), type: Type.Literal("tower.built"), towerId: IdSchema, padId: IdSchema },
     { additionalProperties: false }
