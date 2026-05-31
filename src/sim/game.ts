@@ -23,14 +23,6 @@ export interface GameOptions {
 type TowerDefById = Readonly<Record<string, TowerDef>>;
 type EnemyDefById = Readonly<Record<string, EnemyDef>>;
 
-interface ExpandedSpawn {
-  readonly elapsedTick: number;
-  readonly spawnIndex: number;
-  readonly memberIndex: number;
-  readonly enemyId: string;
-  readonly pathId: string;
-}
-
 interface AppliedCommand {
   readonly tick: number;
   readonly command: Command;
@@ -304,26 +296,27 @@ function elapsedWaveTick(state: GameState): number {
   return state.tick - (state.activeWaveStartedTick ?? state.tick);
 }
 
-function expandedWaveSpawns(wave: WaveDef): readonly ExpandedSpawn[] {
-  return wave.spawns.flatMap((spawn, spawnIndex) =>
-    Array.from({ length: spawn.count }, (_, memberIndex) => ({
-      elapsedTick: spawn.tick + memberIndex * spawn.intervalTicks,
-      spawnIndex,
-      memberIndex,
-      enemyId: spawn.enemyId,
-      pathId: spawn.pathId
-    }))
-  );
-}
-
-function enemyInstanceId(waveId: string, spawn: ExpandedSpawn): string {
-  return `enemy:${waveId}:${String(spawn.spawnIndex)}:${String(spawn.memberIndex)}`;
+function enemyInstanceId(waveId: string, spawnIndex: number, memberIndex: number): string {
+  return `enemy:${waveId}:${String(spawnIndex)}:${String(memberIndex)}`;
 }
 
 function derivePressure(enemies: readonly SnapshotEnemy[]): number {
-  const activeEnemies = enemies.filter((enemy) => enemy.status === "active");
-  const nearLeaks = activeEnemies.filter((enemy) => enemy.progress >= 0.75);
-  return activeEnemies.length + nearLeaks.length * 2;
+  let activeCount = 0;
+  let nearLeakCount = 0;
+
+  for (const enemy of enemies) {
+    if (enemy.status !== "active") {
+      continue;
+    }
+
+    activeCount += 1;
+
+    if (enemy.progress >= 0.75) {
+      nearLeakCount += 1;
+    }
+  }
+
+  return activeCount + nearLeakCount * 2;
 }
 
 function updatePressure(state: GameState): GameState {
@@ -390,16 +383,28 @@ function spawnDueEnemies(state: GameState): GameState {
   }
 
   const elapsed = elapsedWaveTick(state);
-  const dueSpawns = expandedWaveSpawns(wave).filter((spawn) => spawn.elapsedTick === elapsed);
-
-  if (dueSpawns.length === 0) {
-    return state;
-  }
-
   let eventLog = state.eventLog;
-  const enemies = [...state.enemies];
+  let enemies: SnapshotEnemy[] | undefined;
 
-  for (const spawn of dueSpawns) {
+  for (let spawnIndex = 0; spawnIndex < wave.spawns.length; spawnIndex += 1) {
+    const spawn = wave.spawns[spawnIndex];
+
+    if (!spawn || elapsed < spawn.tick) {
+      continue;
+    }
+
+    const relativeTick = elapsed - spawn.tick;
+
+    if (relativeTick % spawn.intervalTicks !== 0) {
+      continue;
+    }
+
+    const memberIndex = relativeTick / spawn.intervalTicks;
+
+    if (memberIndex >= spawn.count) {
+      continue;
+    }
+
     const enemyDef = state.enemyDefsById[spawn.enemyId];
     const path = state.map?.paths.find((candidate) => candidate.id === spawn.pathId);
 
@@ -407,7 +412,9 @@ function spawnDueEnemies(state: GameState): GameState {
       continue;
     }
 
-    const id = enemyInstanceId(wave.id, spawn);
+    enemies ??= [...state.enemies];
+
+    const id = enemyInstanceId(wave.id, spawnIndex, memberIndex);
     enemies.push({
       id,
       enemyId: spawn.enemyId,
@@ -426,7 +433,7 @@ function spawnDueEnemies(state: GameState): GameState {
     });
   }
 
-  if (enemies.length === state.enemies.length) {
+  if (!enemies) {
     return state;
   }
 

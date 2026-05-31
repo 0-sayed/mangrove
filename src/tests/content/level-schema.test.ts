@@ -223,4 +223,29 @@ describe("TD content and runtime schemas", () => {
     expect(validateSimEvent({ tick: 0, type: "selection.changed", entityId: "tower-1" }).ok).toBe(true);
     expect(validateSimEvent({ tick: 0, type: "hover.changed", entityId: "pad-worker-a" }).ok).toBe(true);
   });
+
+  it("allows snapshots to report exhausted town health", () => {
+    expect(
+      validateLevelConfig({
+        ...validLevelConfig,
+        startingState: { ...validLevelConfig.startingState, townHealth: 0 }
+      }).ok
+    ).toBe(false);
+    expect(
+      validateSimSnapshot({
+        tick: 12,
+        phase: "wave",
+        meters: { townHealth: 0, buildBudget: 60, pressure: 0 },
+        towers: [],
+        enemies: [],
+        projectiles: [],
+        alerts: [],
+        buildIntent: {},
+        selection: {},
+        hover: {},
+        previews: { ranges: [], connections: [] },
+        activeWaveId: "wave-normal-flow"
+      }).ok
+    ).toBe(true);
+  });
 });

@@ -4,6 +4,7 @@ import { tdContractFixtureMap } from "@content/td-contract-fixture";
 import type { MapDef, SimSnapshot } from "@content/schemas";
 import {
   BATTLEFIELD_VIEW,
+  battlefieldEnemies,
   battlefieldTowers,
   buildPadWorldPosition,
   enemyWorldPosition,
@@ -105,6 +106,10 @@ describe("battlefield view model", () => {
 
   it("uses snapshot towers as the battlefield render source", () => {
     expect(battlefieldTowers(snapshot).map((tower) => tower.towerId)).toEqual(["worker-tower"]);
+  });
+
+  it("uses active snapshot enemies as the battlefield render source", () => {
+    expect(battlefieldEnemies(snapshot).map((enemy) => enemy.id)).toEqual(["enemy-1"]);
   });
 
   it("maps worker towers to the worker tower body asset", () => {

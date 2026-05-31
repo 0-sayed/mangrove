@@ -129,6 +129,15 @@ const StartingStateSchema = Type.Object(
   { additionalProperties: false }
 );
 
+const SnapshotMetersSchema = Type.Object(
+  {
+    townHealth: NonNegativeNumberSchema,
+    buildBudget: NonNegativeNumberSchema,
+    pressure: NonNegativeNumberSchema
+  },
+  { additionalProperties: false }
+);
+
 const RecapLawSchema = Type.Object(
   {
     id: IdSchema,
@@ -229,7 +238,7 @@ const SimSnapshotSchema = Type.Object(
   {
     tick: Type.Integer({ minimum: 0 }),
     phase: SimPhaseSchema,
-    meters: StartingStateSchema,
+    meters: SnapshotMetersSchema,
     towers: Type.Array(SnapshotTowerSchema),
     enemies: Type.Array(SnapshotEnemySchema),
     projectiles: Type.Array(SnapshotProjectileSchema),
