@@ -1,49 +1,59 @@
 import { describe, expect, it } from "vitest";
 
-import { bootstrapLevel } from "@content/bootstrap-level";
 import {
-  messageFestivalV0BuildingDefs,
-  messageFestivalV0Level,
-  messageFestivalV0Map
-} from "@content/message-festival-v0";
+  tdContractFixtureEnemyDefs,
+  tdContractFixtureLevel,
+  tdContractFixtureMap,
+  tdContractFixtureTowerDefs
+} from "@content/td-contract-fixture";
 import type { Command } from "@content/schemas";
 import { runReplay, type ReplayCommand } from "@sim/replay";
 
-describe("sim replay", () => {
+const replayOptions = {
+  towerDefs: tdContractFixtureTowerDefs,
+  enemyDefs: tdContractFixtureEnemyDefs,
+  map: tdContractFixtureMap
+};
+
+describe("TD sim replay", () => {
   it("replays the same command log to the same terminal hash", () => {
     const commandLog: readonly ReplayCommand[] = [
-      { tick: 0, command: { type: "StartWave", waveId: "opening-flow" } },
-      { tick: 2, command: { type: "SetWorkerCount", count: 2 } }
+      { tick: 0, command: { type: "SetBuildIntent", towerId: "worker-tower" } },
+      { tick: 1, command: { type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" } },
+      { tick: 2, command: { type: "StartWave", waveId: "wave-normal-flow" } }
     ];
 
-    const first = runReplay({ config: bootstrapLevel, seed: 123, ticks: 5, commandLog });
-    const second = runReplay({ config: bootstrapLevel, seed: 123, ticks: 5, commandLog });
+    const first = runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 44, commandLog, ...replayOptions });
+    const second = runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 44, commandLog, ...replayOptions });
 
     expect(first.hash).toBe(second.hash);
     expect(first.state).toEqual(second.state);
+    expect(first.state.phase).toBe("complete");
   });
 
   it("keeps command order as part of deterministic input", () => {
-    const startWave: Command = { type: "StartWave", waveId: "opening-flow" };
-    const setWorkerCount: Command = { type: "SetWorkerCount", count: 2 };
+    const setIntent: Command = { type: "SetBuildIntent", towerId: "worker-tower" };
+    const clearIntent: Command = { type: "ClearBuildIntent" };
 
     const first = runReplay({
-      config: bootstrapLevel,
+      config: tdContractFixtureLevel,
       seed: 123,
       ticks: 1,
       commandLog: [
-        { tick: 0, command: startWave },
-        { tick: 0, command: setWorkerCount }
-      ]
+        { tick: 0, command: setIntent },
+        { tick: 0, command: clearIntent }
+      ],
+      ...replayOptions
     });
     const second = runReplay({
-      config: bootstrapLevel,
+      config: tdContractFixtureLevel,
       seed: 123,
       ticks: 1,
       commandLog: [
-        { tick: 0, command: setWorkerCount },
-        { tick: 0, command: startWave }
-      ]
+        { tick: 0, command: clearIntent },
+        { tick: 0, command: setIntent }
+      ],
+      ...replayOptions
     });
 
     expect(first.hash).not.toBe(second.hash);
@@ -51,7 +61,7 @@ describe("sim replay", () => {
 
   it("does not scan the full command log for every tick", () => {
     const commandLog = new Proxy<ReplayCommand[]>(
-      [{ tick: 0, command: { type: "StartWave", waveId: "opening-flow" } }],
+      [{ tick: 0, command: { type: "StartWave", waveId: "wave-normal-flow" } }],
       {
         get(target, property, receiver) {
           if (property === "filter") {
@@ -64,73 +74,46 @@ describe("sim replay", () => {
     );
 
     expect(() =>
-      runReplay({ config: bootstrapLevel, seed: 123, ticks: 3, commandLog })
+      runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: 3, commandLog, ...replayOptions })
     ).not.toThrow();
   });
 
-  it("replays lifecycle ticks with building definitions deterministically", () => {
+  it("replays with tower definitions, enemy definitions, and map deterministically", () => {
     const commandLog: readonly ReplayCommand[] = [
-      { tick: 0, command: { type: "StartWave", waveId: "wave-opening-flow" } }
+      { tick: 0, command: { type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" } },
+      { tick: 1, command: { type: "StartWave", waveId: "wave-normal-flow" } }
     ];
 
     const first = runReplay({
-      config: messageFestivalV0Level,
+      config: tdContractFixtureLevel,
       seed: 123,
-      ticks: 30,
+      ticks: 4,
       commandLog,
-      buildingDefs: messageFestivalV0BuildingDefs,
-      map: messageFestivalV0Map
+      ...replayOptions
     });
     const second = runReplay({
-      config: messageFestivalV0Level,
+      config: tdContractFixtureLevel,
       seed: 123,
-      ticks: 30,
+      ticks: 4,
       commandLog,
-      buildingDefs: messageFestivalV0BuildingDefs,
-      map: messageFestivalV0Map
+      ...replayOptions
     });
 
     expect(first.hash).toBe(second.hash);
     expect(first.state).toEqual(second.state);
-  });
-
-  it("replays first playable commands deterministically", () => {
-    const commandLog: readonly ReplayCommand[] = [
-      { tick: 0, command: { type: "StartWave", waveId: "wave-opening-flow" } },
+    expect(first.state.towers).toEqual([
       {
-        tick: 221,
-        command: { type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" }
-      },
-      { tick: 222, command: { type: "SetWorkerCount", count: 2 } },
-      { tick: 223, command: { type: "StartWave", waveId: "wave-flood" } }
-    ];
-
-    const first = runReplay({
-      config: messageFestivalV0Level,
-      seed: 123,
-      ticks: 260,
-      commandLog,
-      buildingDefs: messageFestivalV0BuildingDefs,
-      map: messageFestivalV0Map
-    });
-    const second = runReplay({
-      config: messageFestivalV0Level,
-      seed: 123,
-      ticks: 260,
-      commandLog,
-      buildingDefs: messageFestivalV0BuildingDefs,
-      map: messageFestivalV0Map
-    });
-
-    expect(first.hash).toBe(second.hash);
-    expect(first.state).toEqual(second.state);
-    expect(first.state.buildings.some((building) => building.defId === "queue-hub")).toBe(true);
-    expect(first.state.workerCount).toBe(2);
+        id: "worker-tower@pad-worker-a#0",
+        towerId: "worker-tower",
+        padId: "pad-worker-a",
+        cooldownRemainingTicks: 0
+      }
+    ]);
   });
 
   it("rejects negative replay duration", () => {
     expect(() =>
-      runReplay({ config: bootstrapLevel, seed: 123, ticks: -1, commandLog: [] })
+      runReplay({ config: tdContractFixtureLevel, seed: 123, ticks: -1, commandLog: [], ...replayOptions })
     ).toThrow("non-negative integer");
   });
 });

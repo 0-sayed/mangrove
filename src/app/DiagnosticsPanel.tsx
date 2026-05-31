@@ -11,9 +11,10 @@ export function DiagnosticsPanel({ snapshot }: DiagnosticsPanelProps) {
 
   return (
     <aside className="diagnostics" aria-label="Development diagnostics">
-      <span>tick {snapshot.tick}</span>
-      <span>phase {snapshot.phase}</span>
-      <span>messages {snapshot.messages.length}</span>
+      <span>{`tick ${String(snapshot.tick)}`}</span>
+      <span>{`phase ${snapshot.phase}`}</span>
+      <span>{`towers ${String(snapshot.towers.length)}`}</span>
+      <span>{`enemies ${String(snapshot.enemies.length)}`}</span>
     </aside>
   );
 }

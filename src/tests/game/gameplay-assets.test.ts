@@ -30,16 +30,16 @@ describe("gameplay asset registry", () => {
       "map-build-slot-queue",
       "map-placement-preview-valid",
       "map-placement-preview-invalid",
-      "building-api-gate-flowing",
-      "building-api-gate-saturated",
-      "building-api-gate-dropping",
-      "building-worker-yard-idle",
-      "building-worker-yard-working",
-      "building-worker-yard-saturated",
-      "building-queue-hub-empty",
-      "building-queue-hub-filling",
-      "building-queue-hub-backing-up",
-      "building-queue-hub-overflowing",
+      "building-ingress-tower-flowing",
+      "building-ingress-tower-saturated",
+      "building-ingress-tower-dropping",
+      "building-worker-tower-idle",
+      "building-worker-tower-working",
+      "building-worker-tower-saturated",
+      "building-queue-tower-empty",
+      "building-queue-tower-filling",
+      "building-queue-tower-backing-up",
+      "building-queue-tower-overflowing",
       "packet-useful",
       "packet-useful-queued",
       "packet-useful-processing",
@@ -53,8 +53,8 @@ describe("gameplay asset registry", () => {
       "effect-drop",
       "effect-timeout-expired",
       "effect-overflow",
-      "effect-backlog-saturation",
-      "effect-trust-loss",
+      "effect-pressure-saturation",
+      "effect-town-health-loss",
       "effect-budget-gain",
       "effect-wave-start",
       "effect-wave-end",
@@ -63,18 +63,18 @@ describe("gameplay asset registry", () => {
       "badge-worker",
       "badge-storage-exit",
       "ui-frame-hud",
-      "ui-icon-trust",
+      "ui-icon-town-health",
       "ui-icon-budget",
-      "ui-icon-backlog",
-      "ui-meter-trust",
+      "ui-icon-pressure",
+      "ui-meter-town-health",
       "ui-meter-budget",
-      "ui-meter-backlog",
+      "ui-meter-pressure",
       "ui-button-start-wave",
       "ui-button-build-queue",
       "ui-control-worker-count",
       "ui-recap-delivered",
       "ui-recap-dropped",
-      "ui-recap-backlog-peak"
+      "ui-recap-pressure-peak"
     ]);
 
     for (const animationId of FIRST_PLAYABLE_ANIMATION_IDS) {
@@ -87,7 +87,7 @@ describe("gameplay asset registry", () => {
       "gameplay-atlas 0.aseprite",
       "gameplay-atlas 1.aseprite"
     ]);
-    expect(firstFrameName("building-api-gate-flowing")).toBe("gameplay-atlas 36.aseprite");
+    expect(firstFrameName("building-ingress-tower-flowing")).toBe("gameplay-atlas 36.aseprite");
   });
 
   it("builds Phaser animation frame configs from atlas frame names", () => {
@@ -100,7 +100,7 @@ describe("gameplay asset registry", () => {
   });
 
   it("exposes atlas slices for React HUD icons", () => {
-    expect(atlasCssFrame("ui-icon-trust")).toMatchObject({
+    expect(atlasCssFrame("ui-icon-town-health")).toMatchObject({
       imageUrl: GAMEPLAY_ATLAS.imageUrl,
       backgroundPosition: "-360px -504px",
       backgroundSize: "600px 576px",

@@ -22,16 +22,16 @@ export const FIRST_PLAYABLE_ANIMATION_IDS = [
   "map-build-slot-queue",
   "map-placement-preview-valid",
   "map-placement-preview-invalid",
-  "building-api-gate-flowing",
-  "building-api-gate-saturated",
-  "building-api-gate-dropping",
-  "building-worker-yard-idle",
-  "building-worker-yard-working",
-  "building-worker-yard-saturated",
-  "building-queue-hub-empty",
-  "building-queue-hub-filling",
-  "building-queue-hub-backing-up",
-  "building-queue-hub-overflowing",
+  "building-ingress-tower-flowing",
+  "building-ingress-tower-saturated",
+  "building-ingress-tower-dropping",
+  "building-worker-tower-idle",
+  "building-worker-tower-working",
+  "building-worker-tower-saturated",
+  "building-queue-tower-empty",
+  "building-queue-tower-filling",
+  "building-queue-tower-backing-up",
+  "building-queue-tower-overflowing",
   "packet-useful",
   "packet-useful-queued",
   "packet-useful-processing",
@@ -45,8 +45,8 @@ export const FIRST_PLAYABLE_ANIMATION_IDS = [
   "effect-drop",
   "effect-timeout-expired",
   "effect-overflow",
-  "effect-backlog-saturation",
-  "effect-trust-loss",
+  "effect-pressure-saturation",
+  "effect-town-health-loss",
   "effect-budget-gain",
   "effect-wave-start",
   "effect-wave-end",
@@ -55,18 +55,18 @@ export const FIRST_PLAYABLE_ANIMATION_IDS = [
   "badge-worker",
   "badge-storage-exit",
   "ui-frame-hud",
-  "ui-icon-trust",
+  "ui-icon-town-health",
   "ui-icon-budget",
-  "ui-icon-backlog",
-  "ui-meter-trust",
+  "ui-icon-pressure",
+  "ui-meter-town-health",
   "ui-meter-budget",
-  "ui-meter-backlog",
+  "ui-meter-pressure",
   "ui-button-start-wave",
   "ui-button-build-queue",
   "ui-control-worker-count",
   "ui-recap-delivered",
   "ui-recap-dropped",
-  "ui-recap-backlog-peak"
+  "ui-recap-pressure-peak"
 ] as const;
 
 interface ManifestAnimation {
@@ -109,6 +109,14 @@ export interface AtlasCssFrame {
 const animationById = new Map<string, ManifestAnimation>(
   manifest.animations.map((animation) => [animation.id, animation])
 );
+const animationAliases: Readonly<Record<string, string>> = {
+  "ui-icon-town-health": "ui-icon-town-health",
+  "ui-icon-build-budget": "ui-icon-budget",
+  "ui-icon-pressure": "ui-icon-pressure",
+  "ui-meter-town-health": "ui-meter-town-health",
+  "ui-meter-build-budget": "ui-meter-budget",
+  "ui-meter-pressure": "ui-meter-pressure"
+};
 const typedAtlasData = atlasData as AtlasData;
 const frameByName = new Map<string, AtlasFrame>(
   typedAtlasData.frames.map((frame) => [frame.filename, frame])
@@ -116,7 +124,8 @@ const frameByName = new Map<string, AtlasFrame>(
 const cssScale = 0.375;
 
 export function animationFrameNames(animationId: string): string[] {
-  const animation = animationById.get(animationId);
+  const resolvedAnimationId = animationAliases[animationId] ?? animationId;
+  const animation = animationById.get(resolvedAnimationId);
 
   if (!animation) {
     throw new Error(`Missing gameplay animation ${animationId}`);

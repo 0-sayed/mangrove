@@ -3,10 +3,10 @@ import { ErrorBoundary } from "@app/ErrorBoundary";
 import { Hud } from "@app/Hud";
 import { useGameRun } from "@app/useGameRun";
 import {
-  messageFestivalV0BuildingDefs,
-  messageFestivalV0Level,
-  messageFestivalV0Map
-} from "@content/message-festival-v0";
+  tdContractFixtureLevel,
+  tdContractFixtureMap,
+  tdContractFixtureTowerDefs
+} from "@content/td-contract-fixture";
 import { GameCanvas } from "@game/GameCanvas";
 
 export function App() {
@@ -21,9 +21,9 @@ export function App() {
           onCommand={sendCommand}
         />
         <GameCanvas
-          level={messageFestivalV0Level}
-          map={messageFestivalV0Map}
-          buildingDefs={messageFestivalV0BuildingDefs}
+          level={tdContractFixtureLevel}
+          map={tdContractFixtureMap}
+          towerDefs={tdContractFixtureTowerDefs}
           snapshot={snapshot}
           onCommand={sendCommand}
         />

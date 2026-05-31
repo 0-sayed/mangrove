@@ -1,32 +1,23 @@
 import {
-  messageFestivalV0BuildingDefs,
-  messageFestivalV0Level,
-  messageFestivalV0Map
-} from "@content/message-festival-v0";
+  tdContractFixtureEnemyDefs,
+  tdContractFixtureLevel,
+  tdContractFixtureMap,
+  tdContractFixtureTowerDefs,
+  workerTowerDef
+} from "@content/td-contract-fixture";
 import type { Command, SimSnapshot } from "@content/schemas";
 import { createGame, step, toSnapshot, type GameState } from "@sim/game";
 
 export const RUN_TICK_INTERVAL_MS = 100;
 
 const DEFAULT_RUN_SEED = 12345;
-const QUEUE_HUB_BUILDING_ID = "queue-hub";
-const QUEUE_HUB_SLOT_ID = "slot_queue_1";
-const OPENING_WAVE_ID = "wave-opening-flow";
-const ACTIVE_MESSAGE_STATUSES = new Set<SimSnapshot["messages"][number]["status"]>([
-  "accepted",
-  "queued",
-  "processing"
-]);
-
-const WAVE_LABELS: Readonly<Record<string, string>> = {
-  "wave-opening-flow": "Opening Flow",
-  "wave-flood": "Flood Wave"
-};
+const WORKER_TOWER_ID = workerTowerDef.id;
+const WORKER_TOWER_PAD_ID = "pad-worker-a";
 
 const PHASE_LABELS: Readonly<Record<GameState["phase"], string>> = {
-  setup: "Prepare",
+  setup: "Build",
   wave: "Wave",
-  recap: "Build Phase",
+  recap: "Recap",
   complete: "Complete"
 };
 
@@ -41,20 +32,17 @@ export interface RunControls {
   readonly nextWaveId?: string;
   readonly nextWaveLabel: string;
   readonly canStartNextWave: boolean;
-  readonly canPlaceQueueHub: boolean;
-  readonly queueHubCost: number;
-  readonly canIncreaseWorkerCount: boolean;
-  readonly workerCount: number;
-  readonly maxWorkerCount: number;
-  readonly workerCountUpgradeCost: number;
+  readonly canBuildWorkerTower: boolean;
+  readonly workerTowerCost: number;
   readonly isAutoAdvancing: boolean;
 }
 
 export function createInitialRun(seed = DEFAULT_RUN_SEED): GameRun {
   return {
-    game: createGame(messageFestivalV0Level, seed, {
-      buildingDefs: messageFestivalV0BuildingDefs,
-      map: messageFestivalV0Map
+    game: createGame(tdContractFixtureLevel, seed, {
+      towerDefs: tdContractFixtureTowerDefs,
+      enemyDefs: tdContractFixtureEnemyDefs,
+      map: tdContractFixtureMap
     }),
     pendingCommands: []
   };
@@ -92,46 +80,24 @@ export function toRunSnapshot(run: GameRun): SimSnapshot {
 }
 
 export function getRunControls(game: GameState): RunControls {
-  const nextWave = game.config.waves.find(
-    (wave) => wave.id !== game.activeWaveId && !game.completedWaveIds.includes(wave.id)
-  );
-  const hasActiveMessages = game.messages.some((message) =>
-    ACTIVE_MESSAGE_STATUSES.has(message.status)
-  );
-  const isDrainedRecap = game.phase === "recap" && !hasActiveMessages;
-  const openingCompleted = game.completedWaveIds.includes(OPENING_WAVE_ID);
-  const queueHubDef = game.buildingDefsById[QUEUE_HUB_BUILDING_ID];
-  const queueHubCost = queueHubDef?.cost ?? 0;
-  const hasQueueHub = game.buildings.some((building) => building.defId === QUEUE_HUB_BUILDING_ID);
-  const workerYard = game.buildings.find(
-    (building) => game.buildingDefsById[building.defId]?.role === "worker-yard"
-  );
-  const workerYardStats = workerYard ? game.buildingDefsById[workerYard.defId]?.stats : undefined;
-  const maxWorkerCount = workerYardStats?.maxWorkers ?? game.workerCount;
-  const workerCountUpgradeCost = workerYardStats?.workerCountUpgradeCost ?? 0;
-  const canActBetweenWaves = openingCompleted && isDrainedRecap;
+  const nextWave = game.config.waves.find((wave) => !game.completedWaveIds.includes(wave.id));
+  const workerTower = game.towerDefsById[WORKER_TOWER_ID];
+  const workerTowerCost = workerTower?.cost ?? 0;
+  const workerPadAvailable = !game.towers.some((tower) => tower.padId === WORKER_TOWER_PAD_ID);
 
   return {
-    phaseLabel: labelPhase(game.phase),
-    activeWaveLabel: game.activeWaveId ? labelWave(game.activeWaveId) : "No wave",
-    ...(nextWave
-      ? {
-          nextWaveId: nextWave.id
-        }
-      : {}),
-    nextWaveLabel: nextWave ? labelWave(nextWave.id) : "No wave",
-    canStartNextWave:
-      nextWave !== undefined && ((game.phase === "setup" && !hasActiveMessages) || isDrainedRecap),
-    canPlaceQueueHub: canActBetweenWaves && !hasQueueHub && game.meters.budget >= queueHubCost,
-    queueHubCost,
-    canIncreaseWorkerCount:
-      canActBetweenWaves &&
-      game.workerCount < maxWorkerCount &&
-      game.meters.budget >= workerCountUpgradeCost,
-    workerCount: game.workerCount,
-    maxWorkerCount,
-    workerCountUpgradeCost,
-    isAutoAdvancing: game.phase === "wave" || (game.phase === "recap" && hasActiveMessages)
+    phaseLabel: PHASE_LABELS[game.phase],
+    activeWaveLabel: game.activeWaveId ? labelWave(game, game.activeWaveId) : "Awaiting wave",
+    ...(nextWave ? { nextWaveId: nextWave.id } : {}),
+    nextWaveLabel: nextWave ? labelWave(game, nextWave.id) : "Complete",
+    canStartNextWave: nextWave !== undefined && (game.phase === "setup" || game.phase === "recap"),
+    canBuildWorkerTower:
+      (game.phase === "setup" || game.phase === "recap") &&
+      workerTower !== undefined &&
+      workerPadAvailable &&
+      game.meters.buildBudget >= workerTowerCost,
+    workerTowerCost,
+    isAutoAdvancing: game.phase === "wave"
   };
 }
 
@@ -146,25 +112,14 @@ export function createStartNextWaveCommand(controls: RunControls): Command {
   };
 }
 
-export function createPlaceQueueHubCommand(): Command {
+export function createBuildWorkerTowerCommand(): Command {
   return {
-    type: "PlaceBuilding",
-    buildingId: QUEUE_HUB_BUILDING_ID,
-    slotId: QUEUE_HUB_SLOT_ID
+    type: "BuildTower",
+    towerId: WORKER_TOWER_ID,
+    padId: WORKER_TOWER_PAD_ID
   };
 }
 
-export function createIncreaseWorkerCountCommand(currentCount: number): Command {
-  return {
-    type: "SetWorkerCount",
-    count: currentCount + 1
-  };
-}
-
-function labelWave(waveId: string): string {
-  return WAVE_LABELS[waveId] ?? waveId;
-}
-
-function labelPhase(phase: GameState["phase"]): string {
-  return PHASE_LABELS[phase];
+function labelWave(game: GameState, waveId: string): string {
+  return game.config.waves.find((wave) => wave.id === waveId)?.displayName ?? waveId;
 }

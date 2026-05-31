@@ -4,8 +4,7 @@ import type { Command, SimSnapshot } from "@content/schemas";
 import { atlasCssFrame } from "@game/gameplay-assets";
 
 import {
-  createIncreaseWorkerCountCommand,
-  createPlaceQueueHubCommand,
+  createBuildWorkerTowerCommand,
   createStartNextWaveCommand,
   type RunControls
 } from "./run-controller";
@@ -16,15 +15,17 @@ interface HudProps {
   readonly onCommand: (command: Command) => void;
 }
 
+type MeterTone = "town-health" | "build-budget" | "pressure";
+
 interface MeterProps {
   readonly label: string;
   readonly tooltip: string;
   readonly value: number;
-  readonly tone: "trust" | "budget" | "backlog";
+  readonly tone: MeterTone;
 }
 
 interface HudIconProps {
-  readonly tone: MeterProps["tone"];
+  readonly tone: MeterTone;
 }
 
 function HudIcon({ tone }: HudIconProps) {
@@ -53,19 +54,19 @@ function Meter({ label, tooltip, value, tone }: MeterProps) {
 }
 
 export function Hud({ snapshot, controls, onCommand }: HudProps) {
+  const startWaveButtonLabel = controls.canStartNextWave
+    ? `Start ${controls.nextWaveLabel}`
+    : controls.isAutoAdvancing
+      ? `${controls.activeWaveLabel} Running`
+      : "No Wave Available";
+
   return (
     <section className="hud" aria-label="Battlefield HUD">
       <div className="hud__status" aria-label="Run status">
-        <span
-          aria-label="Run phase"
-          data-tooltip="Current run step: prepare, wave, build phase, or complete."
-        >
+        <span aria-label="Run phase" data-tooltip="Current run step.">
           {controls.phaseLabel}
         </span>
-        <span
-          aria-label="Active wave"
-          data-tooltip="The current incident wave. Build choices should answer this pressure."
-        >
+        <span aria-label="Active wave" data-tooltip="The current traffic wave.">
           {controls.activeWaveLabel}
         </span>
         <span className="sr-only" aria-label="Simulation tick" data-testid="sim-tick">
@@ -75,29 +76,29 @@ export function Hud({ snapshot, controls, onCommand }: HudProps) {
 
       <div className="meters" aria-label="Core meters">
         <Meter
-          label="Trust"
-          tooltip={METER_TOOLTIPS.trust}
-          value={snapshot.meters.trust}
-          tone="trust"
+          label="Town Health"
+          tooltip={METER_TOOLTIPS["town-health"]}
+          value={snapshot.meters.townHealth}
+          tone="town-health"
         />
         <Meter
-          label="Budget"
-          tooltip={METER_TOOLTIPS.budget}
-          value={snapshot.meters.budget}
-          tone="budget"
+          label="Build Budget"
+          tooltip={METER_TOOLTIPS["build-budget"]}
+          value={snapshot.meters.buildBudget}
+          tone="build-budget"
         />
         <Meter
-          label="Backlog"
-          tooltip={METER_TOOLTIPS.backlog}
-          value={snapshot.meters.backlog}
-          tone="backlog"
+          label="Pressure"
+          tooltip={METER_TOOLTIPS.pressure}
+          value={snapshot.meters.pressure}
+          tone="pressure"
         />
       </div>
 
       <div className="hud__controls" aria-label="Run controls">
         <span
           className="tooltip-anchor"
-          data-tooltip="Start the next incident wave when your defenses are ready."
+          data-tooltip="Start the next traffic wave when defenses are ready."
         >
           <button
             type="button"
@@ -106,36 +107,21 @@ export function Hud({ snapshot, controls, onCommand }: HudProps) {
               onCommand(createStartNextWaveCommand(controls));
             }}
           >
-            Start {controls.nextWaveLabel}
+            {startWaveButtonLabel}
           </button>
         </span>
         <span
           className="tooltip-anchor"
-          data-tooltip="Build a buffer defense that absorbs burst pressure before processors take over."
+          data-tooltip="Place a worker tower on the first available worker pad."
         >
           <button
             type="button"
-            disabled={!controls.canPlaceQueueHub}
+            disabled={!controls.canBuildWorkerTower}
             onClick={() => {
-              onCommand(createPlaceQueueHubCommand());
+              onCommand(createBuildWorkerTowerCommand());
             }}
           >
-            Build Queue Hub ({controls.queueHubCost})
-          </button>
-        </span>
-        <span
-          className="tooltip-anchor"
-          data-tooltip="Tune a processor defense so waiting work drains faster after a burst."
-        >
-          <button
-            type="button"
-            disabled={!controls.canIncreaseWorkerCount}
-            onClick={() => {
-              onCommand(createIncreaseWorkerCountCommand(controls.workerCount));
-            }}
-          >
-            Workers {controls.workerCount}/{controls.maxWorkerCount} (+
-            {controls.workerCountUpgradeCost})
+            {`Build Worker Tower (${String(controls.workerTowerCost)})`}
           </button>
         </span>
       </div>
@@ -143,8 +129,8 @@ export function Hud({ snapshot, controls, onCommand }: HudProps) {
   );
 }
 
-const METER_TOOLTIPS: Readonly<Record<MeterProps["tone"], string>> = {
-  trust: "Town health. Falls when useful work leaks or expires.",
-  budget: "Build currency. Earned from deliveries, spent on defenses and upgrades.",
-  backlog: "Pressure meter. Work waiting or in progress; not spendable."
+const METER_TOOLTIPS: Readonly<Record<MeterTone, string>> = {
+  "town-health": "Town durability. Falls when traffic leaks through defenses.",
+  "build-budget": "Build currency. Earned from waves and spent on towers.",
+  pressure: "Incoming traffic pressure from the current wave."
 };

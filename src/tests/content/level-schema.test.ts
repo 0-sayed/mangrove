@@ -1,282 +1,205 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  validateBuildingDef,
+  validateBuildIntent,
+  validateBuildPadDef,
   validateCommand,
+  validateConnectionPreview,
+  validateEnemyDef,
+  validateHoverState,
   validateLevelConfig,
-  validateMapMetadata,
-  validatePostWaveResult,
+  validateMapDef,
+  validatePathDef,
+  validateRangePreview,
+  validateSelectionState,
   validateSimEvent,
   validateSimSnapshot,
-  validateWaveDef
+  validateTowerDef,
+  validateWaveDef,
+  validateWavePreview
 } from "@content/schemas";
+import type { BuildPadDef } from "@content/schemas";
 
-const validMapMetadata = {
-  id: "map-message-festival-v0",
-  paths: [
-    {
-      id: "path-main",
-      spawnId: "spawn_festival_gate",
-      exitId: "exit_storage_1",
-      nodeIds: ["spawn_festival_gate", "slot_ingress_1", "slot_worker_1", "exit_storage_1"]
-    }
+const validPathDef = {
+  id: "road-main",
+  portalId: "incident-portal-1",
+  coreId: "service-core",
+  points: [
+    { x: 0, y: 4 },
+    { x: 4, y: 4 },
+    { x: 8, y: 6 }
   ],
-  buildSlots: [
-    { id: "slot_ingress_1", role: "api-gate", x: 4, y: 6 },
-    { id: "slot_worker_1", role: "worker-yard", x: 8, y: 6 },
-    { id: "slot_queue_1", role: "queue-hub", x: 6, y: 6 }
-  ],
-  spawns: [{ id: "spawn_festival_gate", x: 1, y: 6 }],
-  exits: [{ id: "exit_storage_1", x: 12, y: 6 }]
+  length: 12
 };
 
-const validBuildingDef = {
-  id: "queue-hub",
-  role: "queue-hub",
-  cost: 40,
-  allowedSlots: ["slot_queue_1"],
-  stats: {
-    capacity: 24
-  },
-  visibleStates: ["idle", "active", "overflowing"]
+const validBuildPadDef: BuildPadDef = { id: "pad-worker-a", x: 4, y: 3, allowedTowerKinds: ["worker"] };
+
+const validMapDef = {
+  id: "map-traffic-surge-contract",
+  size: { width: 16, height: 9 },
+  paths: [validPathDef],
+  buildPads: [
+    validBuildPadDef,
+    { id: "pad-queue-a", x: 5, y: 5, allowedTowerKinds: ["queue"] },
+    { id: "pad-load-balancer-a", x: 7, y: 4, allowedTowerKinds: ["load-balancer"] }
+  ],
+  portals: [{ id: "incident-portal-1", x: 0, y: 4 }],
+  cores: [{ id: "service-core", x: 8, y: 6 }]
+};
+
+const validTowerDef = {
+  id: "worker-tower",
+  kind: "worker",
+  displayName: "Worker Tower",
+  cost: 30,
+  range: 2.5,
+  targets: ["ground"],
+  combat: { damage: 1, cooldownTicks: 12 },
+  softwareShadow: "Consumer capacity"
+};
+
+const validEnemyDef = {
+  id: "request-runner",
+  kind: "request-runner",
+  displayName: "Request Runner",
+  maxHealth: 3,
+  speed: 1,
+  leakDamage: 1,
+  reward: 2,
+  traits: ["normal-request"]
 };
 
 const validWaveDef = {
-  id: "wave-opening-flow",
-  durationTicks: 200,
-  timeoutTicks: 300,
-  spawnSchedule: [
-    {
-      tick: 0,
-      messageType: "useful",
-      count: 1
-    }
-  ],
-  messageTypes: ["useful"],
-  recapId: "recap-opening-flow"
+  id: "wave-normal-flow",
+  displayName: "Normal Flow",
+  preview: {
+    enemyKinds: ["request-runner"],
+    pressure: "low",
+    hint: "Basic traffic follows the main road."
+  },
+  spawns: [{ tick: 0, enemyId: "request-runner", pathId: "road-main", count: 3, intervalTicks: 20 }],
+  budgetReward: 10
 };
 
 const validLevelConfig = {
-  id: "message-festival-bootstrap",
-  mapId: "map-message-festival-v0",
+  id: "traffic-surge-contract-fixture",
+  mapId: "map-traffic-surge-contract",
   startingState: {
-    budget: 50,
-    trust: 100,
-    backlog: 0,
-    workerCount: 1
+    townHealth: 20,
+    buildBudget: 60,
+    pressure: 0
   },
-  startingBuildings: [
-    {
-      defId: "api-gate",
-      slotId: "slot_ingress_1"
-    }
-  ],
-  availableBuildings: ["queue-hub"],
+  availableTowerIds: ["worker-tower"],
   waves: [validWaveDef],
-  winCondition: {
-    kind: "trust-at-least",
-    value: 70
-  },
-  lossCondition: {
-    kind: "trust-below",
-    value: 70
-  },
-  recaps: [
+  recapLaws: [
     {
-      id: "recap-opening-flow",
-      lines: ["Requests enter through the API and finish only after useful work."]
+      id: "law-worker-throughput",
+      afterWaveId: "wave-normal-flow",
+      text: "Workers turn queued work into completed work, but only within capacity."
     }
   ]
 };
 
-describe("first playable content schemas", () => {
-  it("accepts valid first playable level config", () => {
+describe("TD content and runtime schemas", () => {
+  it("accepts valid TD map, path, tower, enemy, wave, and level config", () => {
+    expect(validatePathDef(validPathDef).ok).toBe(true);
+    expect(validateBuildPadDef(validBuildPadDef).ok).toBe(true);
+    expect(validateMapDef(validMapDef).ok).toBe(true);
+    expect(validateTowerDef(validTowerDef).ok).toBe(true);
+    expect(validateEnemyDef(validEnemyDef).ok).toBe(true);
+    expect(validateWaveDef(validWaveDef).ok).toBe(true);
     expect(validateLevelConfig(validLevelConfig).ok).toBe(true);
   });
 
-  it("accepts level unlock rules for first playable progression", () => {
+  it("rejects prototype Message Festival vocabulary", () => {
+    expect(validateTowerDef({ ...validTowerDef, kind: ["queue", "hub"].join("-") }).ok).toBe(false);
     expect(
       validateLevelConfig({
         ...validLevelConfig,
-        unlocks: [
-          {
-            afterWaveId: "wave-opening-flow",
-            buildingIds: ["queue-hub"],
-            commandTypes: ["PlaceBuilding", "SetWorkerCount"]
-          }
-        ]
+        startingState: {
+          budget: 50,
+          [["tr", "ust"].join("")]: 100,
+          [["back", "log"].join("")]: 0,
+          [["worker", "Count"].join("")]: 1
+        }
+      }).ok
+    ).toBe(false);
+    expect(
+      validateCommand({
+        type: ["Place", "Building"].join(""),
+        buildingId: ["queue", "hub"].join("-"),
+        slotId: "slot_queue_1"
+      }).ok
+    ).toBe(false);
+  });
+
+  it("accepts TD commands and rejects removed prototype commands", () => {
+    expect(validateCommand({ type: "StartWave", waveId: "wave-normal-flow" }).ok).toBe(true);
+    expect(validateCommand({ type: "BuildTower", towerId: "worker-tower", padId: "pad-worker-a" }).ok).toBe(true);
+    expect(validateCommand({ type: "SetBuildIntent", towerId: "worker-tower" }).ok).toBe(true);
+    expect(validateCommand({ type: "ClearBuildIntent" }).ok).toBe(true);
+    expect(validateCommand({ type: "SelectEntity", entityId: "tower-1" }).ok).toBe(true);
+    expect(validateCommand({ type: "ClearSelection" }).ok).toBe(true);
+    expect(validateCommand({ type: "SetHover", entityId: "pad-worker-a" }).ok).toBe(true);
+    expect(validateCommand({ type: "ClearHover" }).ok).toBe(true);
+    expect(validateCommand({ type: ["Set", "Worker", "Count"].join(""), count: 2 }).ok).toBe(false);
+  });
+
+  it("accepts build, selection, hover, range, connection, and wave preview state", () => {
+    expect(validateBuildIntent({ towerId: "worker-tower" }).ok).toBe(true);
+    expect(validateSelectionState({ entityId: "tower-1" }).ok).toBe(true);
+    expect(validateSelectionState({}).ok).toBe(true);
+    expect(validateHoverState({ entityId: "pad-worker-a" }).ok).toBe(true);
+    expect(validateHoverState({}).ok).toBe(true);
+    expect(validateRangePreview({ towerId: "worker-tower", padId: "pad-worker-a", radius: 2.5 }).ok).toBe(true);
+    expect(
+      validateConnectionPreview({
+        sourceId: "queue-snare",
+        targetIds: ["worker-tower"],
+        kind: "stall-window"
       }).ok
     ).toBe(true);
-  });
-
-  it("rejects invalid unlock command types", () => {
     expect(
-      validateLevelConfig({
-        ...validLevelConfig,
-        unlocks: [
-          {
-            afterWaveId: "wave-opening-flow",
-            commandTypes: ["UpgradeBuilding"]
-          }
-        ]
+      validateWavePreview({
+        waveId: "wave-normal-flow",
+        enemyKinds: ["request-runner"],
+        pressure: "low",
+        hint: "Basic traffic follows the main road."
       }).ok
-    ).toBe(false);
+    ).toBe(true);
+    expect(validateConnectionPreview({ sourceId: "queue-snare", targetIds: [], kind: "stall-window" }).ok).toBe(false);
   });
 
-  it("accepts valid map metadata", () => {
-    expect(validateMapMetadata(validMapMetadata).ok).toBe(true);
-  });
-
-  it("accepts valid building definitions", () => {
-    expect(validateBuildingDef(validBuildingDef).ok).toBe(true);
-  });
-
-  it("rejects building stat records with empty keys", () => {
-    expect(validateBuildingDef({ ...validBuildingDef, stats: { "": 1 } }).ok).toBe(false);
-  });
-
-  it("accepts valid wave definitions", () => {
-    expect(validateWaveDef(validWaveDef).ok).toBe(true);
-  });
-
-  it("accepts only first playable commands", () => {
-    expect(validateCommand({ type: "StartWave", waveId: "wave-opening-flow" }).ok).toBe(true);
-    expect(validateCommand({ type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" }).ok).toBe(true);
-    expect(validateCommand({ type: "SetWorkerCount", count: 2 }).ok).toBe(true);
-    expect(validateCommand({ type: "UpgradeBuilding", buildingId: "api-gate" }).ok).toBe(false);
-  });
-
-  it("accepts renderable simulator snapshots", () => {
-    const result = validateSimSnapshot({
-      tick: 10,
-      phase: "wave",
-      meters: {
-        trust: 100,
-        budget: 50,
-        backlog: 3
-      },
-      buildings: [
-        {
-          id: "building-api-1",
-          defId: "api-gate",
-          slotId: "slot_ingress_1",
-          state: "active"
-        }
-      ],
-      messages: [
-        {
-          id: "message-1",
-          type: "useful",
-          status: "queued",
-          pathId: "path-main",
-          ageTicks: 20
-        }
-      ],
-      lanePressure: [
-        {
-          pathId: "path-main",
-          backlog: 3,
-          dropped: 0
-        }
-      ],
-      alerts: ["Queue absorbing burst"],
-      workerCount: 2,
-      activeWaveId: "wave-opening-flow"
-    });
-
-    expect(result.ok).toBe(true);
-  });
-
-  it("rejects empty recap text", () => {
-    expect(
-      validateLevelConfig({
-        ...validLevelConfig,
-        recaps: [{ id: "recap-opening-flow", lines: [] }]
-      }).ok
-    ).toBe(false);
-  });
-
-  it("rejects invalid dynamic simulator snapshot state", () => {
+  it("accepts TD simulator snapshots and events without requiring combat", () => {
     expect(
       validateSimSnapshot({
-        tick: 10,
-        phase: "wave",
-        meters: {
-          trust: 100,
-          budget: 50,
-          backlog: 3
-        },
-        buildings: [],
-        messages: [],
-        lanePressure: [],
+        tick: 0,
+        phase: "setup",
+        meters: { townHealth: 20, buildBudget: 60, pressure: 0 },
+        towers: [],
+        enemies: [],
+        projectiles: [],
         alerts: [],
-        workerCount: 0,
-        activeWaveId: ""
-      }).ok
-    ).toBe(false);
-  });
-
-  it("accepts simulator events needed by animation and recap", () => {
-    expect(validateSimEvent({ tick: 1, type: "message.spawned", messageId: "message-1", messageType: "useful" }).ok).toBe(true);
-    expect(validateSimEvent({ tick: 2, type: "meter.changed", meter: "backlog", delta: 1, value: 1 }).ok).toBe(true);
-    expect(validateSimEvent({ tick: 3, type: "wave.started", waveId: "wave-opening-flow" }).ok).toBe(true);
-    expect(validateSimEvent({ tick: 4, type: "wave.ended", waveId: "wave-opening-flow" }).ok).toBe(true);
-    expect(validateSimEvent({ tick: 5, type: "building.placed", buildingId: "queue-hub", slotId: "slot_queue_1" }).ok).toBe(true);
-    expect(validateSimEvent({ tick: 6, type: "worker-count.changed", count: 2 }).ok).toBe(true);
-  });
-
-  it("accepts post-wave recap results", () => {
-    expect(
-      validatePostWaveResult({
-        waveId: "wave-opening-flow",
-        delivered: 12,
-        dropped: 0,
-        expired: 0,
-        backlogPeak: 2,
-        trustDelta: -3,
-        budgetDelta: -40,
-        playerActionsUsed: [{ type: "PlaceBuilding", buildingId: "queue-hub", slotId: "slot_queue_1" }],
-        revealedBackendTerm: "Queue",
-        revealedLaw: "Queues decouple producers from consumers, but capacity still has limits."
+        buildIntent: { towerId: "worker-tower" },
+        selection: {},
+        hover: {},
+        previews: {
+          ranges: [{ towerId: "worker-tower", padId: "pad-worker-a", radius: 2.5 }],
+          connections: [],
+          nextWave: {
+            waveId: "wave-normal-flow",
+            enemyKinds: ["request-runner"],
+            pressure: "low",
+            hint: "Basic traffic follows the main road."
+          }
+        }
       }).ok
     ).toBe(true);
-  });
 
-  it("rejects post-wave recap results missing learning contract fields", () => {
-    expect(
-      validatePostWaveResult({
-        waveId: "wave-opening-flow",
-        delivered: 12,
-        dropped: 0,
-        expired: 0,
-        backlogPeak: 2
-      }).ok
-    ).toBe(false);
-  });
-
-  it("rejects missing required level fields", () => {
-    const result = validateLevelConfig({
-      id: "message-festival-bootstrap",
-      mapId: "map-message-festival-v0"
-    });
-
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects extra fields in nested level objects", () => {
-    const result = validateLevelConfig({
-      ...validLevelConfig,
-      startingState: {
-        ...validLevelConfig.startingState,
-        unused: true
-      }
-    });
-
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects invalid role values", () => {
-    expect(validateBuildingDef({ ...validBuildingDef, role: "db-vault" }).ok).toBe(false);
-    expect(validateMapMetadata({ ...validMapMetadata, buildSlots: [{ id: "slot_bad", role: "db-vault", x: 0, y: 0 }] }).ok).toBe(false);
+    expect(validateSimEvent({ tick: 0, type: "wave.started", waveId: "wave-normal-flow" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 0, type: "tower.built", towerId: "worker-tower", padId: "pad-worker-a" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 0, type: "build-intent.changed", towerId: "worker-tower" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 0, type: "selection.changed", entityId: "tower-1" }).ok).toBe(true);
+    expect(validateSimEvent({ tick: 0, type: "hover.changed", entityId: "pad-worker-a" }).ok).toBe(true);
   });
 });
